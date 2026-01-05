@@ -2,8 +2,7 @@ name: Update Data (NOTAMs Hourly / TAF Daily)
 
 on:
   schedule:
-    # Se ejecuta CADA HORA en el minuto 0 (00:00, 01:00, 02:00...)
-    # Si quieres cada 30 mins, usa: '*/30 * * * *'
+    # Se ejecuta CADA HORA en el minuto 0 (00:00, 01:00, etc.)
     - cron: '0 * * * *'
   workflow_dispatch:
 
@@ -20,84 +19,89 @@ jobs:
       - name: Setup folders
         run: mkdir -p public/data
 
-     # ------------------------------------------------------------------
-      # NOTAMS: FAA OFICIAL (SOLUCIÓN HÍBRIDA: SESIÓN + JSON)
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (Hybrid Fix)
+      # 1. NOTAMS: FAA OFICIAL (SE EJECUTA CADA HORA)
+      # Solución Híbrida: Obtiene Cookies de sesión primero, luego pide JSON.
+      # ------------------------------------------------------------------
+      - name: Descargar NOTAMs (FAA Official)
         run: |
-          echo "1. Obteniendo cookies de sesión..."
+          echo "1. Inicializando sesión (obteniendo JSESSIONID)..."
           
-          # Paso A: Visitamos la home para obtener la cookie JSESSIONID
-          # Guardamos las "llaves" en cookies.txt
-          curl -s -c cookies.txt -b cookies.txt \
+          # Paso A: Obtener cookies de la home.
+          # -L: Seguir redirecciones
+          # -c/-b: Guardar y usar cookies.txt
+          curl -s -L -c cookies.txt -b cookies.txt \
                -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36" \
                "https://notams.aim.faa.gov/notamSearch/" > /dev/null
 
+          # Pequeña pausa de seguridad
+          sleep 2
+
           echo "2. Consultando API con Cookies y JSON..."
           
-          # Paso B: Usamos las cookies (-b) Y enviamos JSON (--data-raw)
-          # Esto satisface ambos requisitos del servidor.
+          # Paso B: Petición POST con TODOS los headers de seguridad necesarios.
+          # Referer y Origin son obligatorios para evitar el error 302.
           
-          curl -v -c cookies.txt -b cookies.txt \
+          curl -v -L -c cookies.txt -b cookies.txt \
                -X POST "https://notams.aim.faa.gov/notamSearch/search" \
                -H "Content-Type: application/json" \
                -H "Accept: application/json, text/plain, */*" \
                -H "X-Requested-With: XMLHttpRequest" \
                -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36" \
+               -H "Referer: https://notams.aim.faa.gov/notamSearch/" \
+               -H "Origin: https://notams.aim.faa.gov" \
                --data-raw '{"searchType":0,"designators":["MSLP"],"notamsOnly":false,"radius":"10"}' \
                -o public/data/notams_faa.json
 
-          echo "3. Verificando resultados..."
+          echo "3. Procesando resultados..."
 
           if [ -s public/data/notams_faa.json ]; then
              echo "✅ Respuesta recibida. Tamaño: $(ls -lh public/data/notams_faa.json | awk '{print $5}')"
              mv public/data/notams_faa.json public/data/notams.json
-             echo "Muestra de datos:"
+             echo "Muestra de datos (primeros caracteres):"
              head -c 300 public/data/notams.json
           else
              echo "❌ Error: El servidor no devolvió datos."
-             # Creamos un archivo vacío válido para no romper la web
+             # Generar JSON vacío para no romper la web si falla
              echo '{ "notamList": [] }' > public/data/notams.json
-             exit 1
+             # No hacemos exit 1 para permitir que el TAF se actualice si es la hora.
           fi
+
       # ------------------------------------------------------------------
-      # 2. TAF y EXCEL: Solo a las 05:00 UTC (o si es manual)
+      # 2. TAF y EXCEL: SOLO A LAS 05:00 UTC (O MANUAL)
       # ------------------------------------------------------------------
-      - name: Descargar TAF y Excel (Solo a las 05 UTC)
+      - name: Descargar TAF y Excel (Condicional)
         run: |
-          # Obtenemos la hora actual UTC
           CURRENT_HOUR=$(date -u +%H)
           
-          # Condición: Si es la hora 05 O si la ejecución fue manual (botón)
+          # Si es la hora 05 o si se ejecutó manualmente con el botón
           if [ "$CURRENT_HOUR" == "05" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             
             echo "Es la hora programada (05 UTC) o ejecución manual. Actualizando TAF y Excel..."
             
-            # --- BLOQUE TAF ORIGINAL ---
+            # --- TAF ---
             curl -s "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/MSLP.TXT" -o tmp_taf.txt
             taf_block=$(awk '/^TAF MSLP/{flag=1} flag{print} /^$/{if(flag){exit}}' tmp_taf.txt)
             
-            # Tu validación de 03Z
             if echo "$taf_block" | head -1 | grep -qE "03[0-5][0-9]Z"; then
               echo "$taf_block" > public/data/taf-today.txt
-              echo "✅ TAF de 03Z capturado correctamente"
+              echo "✅ TAF de 03Z capturado."
             else
-              # Opcional: Si prefieres no sobrescribir si falla, comenta la linea de abajo
               echo "NIL" > public/data/taf-today.txt
               echo "⚠️ No se encontró TAF 03Z, se puso NIL."
             fi
 
-            # --- BLOQUE EXCEL ORIGINAL ---
+            # --- EXCEL ---
             file_id="1VCS87YR2-O4tJLaJJMVAZtBTPYEQG9fQ"
             curl -L "https://drive.google.com/uc?export=download&id=${file_id}" -o public/operaciones.xlsx
             echo "✅ Excel descargado."
 
           else
-            echo "⏳ Son las $CURRENT_HOUR UTC. Se salta la actualización de TAF/Excel (Programada para 05 UTC)."
+            echo "⏳ Son las $CURRENT_HOUR UTC. Se salta la actualización de TAF/Excel (Solo a las 05 UTC)."
           fi
 
       # ------------------------------------------------------------------
-      # 3. COMMIT: Guarda lo que haya cambiado
+      # 3. GUARDAR CAMBIOS EN EL REPO
       # ------------------------------------------------------------------
       - name: Configurar Git
         run: |
@@ -106,10 +110,7 @@ jobs:
 
       - name: Commit y Push cambios
         run: |
-          # Intentamos agregar todo. Git es inteligente: 
-          # si el TAF/Excel no se tocaron (porque no era la hora), no se commitean.
-          # Solo se commiteará el notams.json si cambió.
-          
+          # Agregamos los 3 archivos posibles (si no cambiaron, git los ignora)
           git add public/data/taf-today.txt public/operaciones.xlsx public/data/notams.json || true
           
           if git diff --cached --quiet; then
