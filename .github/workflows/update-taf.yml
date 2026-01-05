@@ -19,84 +19,57 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: ESTRATEGIA PILOTWEB (LEGACY)
-      # Conectamos directo al sistema antiguo que no tiene bloqueos complejos.
+      # 1. NOTAMS: AVIATION WEATHER CENTER (NOAA) - JSON NATIVO
+      # Fuente oficial, sin bloqueos, sin scraping.
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (Legacy PilotWeb)
+      - name: Descargar NOTAMs (AWC API)
         run: |
-          echo "1. Descargando HTML de PilotWeb..."
+          echo "Consultando AviationWeather.gov..."
           
-          # URL directa que genera el reporte para MSLP
-          # Usamos -L para seguir redirecciones y un User-Agent genérico
+          # URL oficial de la API Beta de NOAA/AWC
+          # ids=MSLP : Aeropuerto
+          # format=json : Formato que necesitamos
+          
           curl -s -L -A "Mozilla/5.0" \
-            "https://pilotweb.nas.faa.gov/PilotWeb/notamRetrievalByICAOAction.do?method=displayByICAOs&reportType=REPORT&actionType=notamRetrievalByICAOs&retrieveLocId=MSLP&formatType=ICAO" \
-            -o raw_pilotweb.html
+            "https://aviationweather.gov/api/data/notam?ids=MSLP&format=json" \
+            -o public/data/notams_raw.json
 
-          echo "2. Extrayendo NOTAMs y convirtiendo a JSON..."
+          echo "Procesando respuesta..."
 
-          # Usamos Node.js para leer el HTML y sacar los textos limpios
+          # Usamos Node para adaptar el JSON al formato que espera tu app (notamList)
           node -e '
             const fs = require("fs");
             try {
-              const html = fs.readFileSync("raw_pilotweb.html", "utf8");
+              // Leer el archivo descargado
+              const raw = fs.readFileSync("public/data/notams_raw.json", "utf8");
               
-              // PilotWeb pone el texto del NOTAM dentro de <div class="notamText"> o similar.
-              // Pero lo más seguro es buscar el patrón de ID de NOTAM (ej: A1234/25)
-              // Regex: Busca una letra mayúscula, 4 dígitos, barra, 2 dígitos (Inicio del NOTAM)
-              // y captura hasta el siguiente salto de línea doble o fin de etiqueta.
+              // AWC devuelve un array directo: [ { "id": "...", "text": "..." }, ... ]
+              let data = JSON.parse(raw);
               
-              // Estrategia de limpieza:
-              // 1. Eliminar tags HTML
-              let cleanText = html.replace(/<[^>]*>/g, "\n");
-              // 2. Normalizar espacios
-              cleanText = cleanText.replace(/&nbsp;/g, " ").replace(/\r\n/g, "\n");
+              // Si no es un array (error), lo forzamos
+              if (!Array.isArray(data)) { data = []; }
               
-              const notams = [];
-              const lines = cleanText.split("\n");
+              console.log("Se recibieron " + data.length + " NOTAMs.");
               
-              let buffer = "";
-              let currentId = "";
-              
-              // Leemos línea por línea para reconstruir los bloques
-              lines.forEach(line => {
-                const l = line.trim();
-                if (!l) return; // Saltar vacíos
-                
-                // Detectar inicio de NOTAM (Ej: A1459/25 NOTAMN)
-                // Regex: Letra + 4 digitos + / + 2 digitos
-                const matchId = l.match(/^([A-Z]\d{4}\/\d{2})\s+/);
-                
-                if (matchId) {
-                   // Si ya teníamos uno en buffer, lo guardamos
-                   if (currentId) {
-                     notams.push({ notamNumber: currentId, icaoMessage: buffer.trim() });
-                   }
-                   // Iniciar nuevo
-                   currentId = matchId[1];
-                   buffer = l;
-                } else if (currentId) {
-                   // Continuar acumulando líneas al NOTAM actual
-                   // Ignoramos textos de sistema como "Account..." o "End of Report"
-                   if (!l.includes("Account") && !l.includes("End of Report")) {
-                      buffer += " " + l;
-                   }
-                }
+              // Mapeamos los campos para que coincidan con lo que espera tu app.notams.js
+              // Tu app espera: { icaoMessage: "TEXTO...", startDate: "..." }
+              const mapped = data.map(item => {
+                 // AWC pone el texto en "raw" o "text"
+                 return {
+                   notamNumber: item.id, // Ej: A0324/25
+                   icaoMessage: item.raw || item.text || "",
+                   startDate: item.time ? item.time.start : new Date().toISOString(),
+                   endDate: item.time ? item.time.end : null
+                 };
               });
               
-              // Guardar el último del buffer
-              if (currentId) {
-                 notams.push({ notamNumber: currentId, icaoMessage: buffer.trim() });
-              }
-
-              // Guardar JSON final compatible con tu app
-              const output = { notamList: notams };
+              // Guardamos en el formato final
+              const output = { notamList: mapped };
               fs.writeFileSync("public/data/notams.json", JSON.stringify(output, null, 2));
               
-              console.log("✅ Se extrajeron " + notams.length + " NOTAMs.");
-              
             } catch (e) {
-              console.error("Error en parsing:", e);
-              // Generar array vacío en caso de error para no romper la web
+              console.error("Error procesando JSON:", e);
+              // Generar vacío en caso de error
               fs.writeFileSync("public/data/notams.json", JSON.stringify({ notamList: [] }));
             }
           '
