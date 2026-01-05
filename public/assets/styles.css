@@ -9,3 +9,28 @@ table { border-collapse: collapse; width: 100%; margin-top: 10px; }
 th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
 th { background: #f4f4f4; }
 .muted { color: #666; font-size: 0.95em; margin: 6px 0 0; }
+/* Estilos para NOTAMs */
+.notams-box {
+  background-color: #fafafa;
+  border: 1px solid #ccc;
+  padding: 10px;
+  max-height: 300px; /* Altura máxima con scroll */
+  overflow-y: auto;
+  font-family: "Courier New", monospace; /* Fuente tipo teletipo */
+  font-size: 0.9em;
+}
+
+.notam-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notam-item {
+  border-bottom: 1px solid #eee;
+  padding: 8px 0;
+}
+
+.notam-item:last-child {
+  border-bottom: none;
+}
