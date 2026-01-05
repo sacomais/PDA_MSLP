@@ -2,74 +2,152 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>ATFM Dashboard v1.2</title>
+  <title>PDA MSLP - Dashboard</title>
   <link rel="stylesheet" href="assets/styles.css" />
-  <!-- Librerías externas -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <h1>Operaciones diarias MSLP</h1>
 
-  <h2>TAF MSLP</h2>
-  <pre id="taf-container">Cargando TAF...</pre>
-
-  <h2>NOTAMs Vigentes</h2>
-  <div id="notams-container" class="notams-box">
+  <header class="top-bar">
+    <div class="header-logos">
+      <img src="assets/logo-cepa.png" alt="CEPA" onerror="this.style.display='none'"> 
+    </div>
+    
+    <div class="header-title">
+      <h1>Aeropuerto Internacional de El Salvador</h1>
+      <h1>San Óscar Arnulfo Romero y Galdámez</h1>
+      <div class="current-date" id="fecha-actual">PDA DIARIO</div>
     </div>
 
-  <div class="controls">
-    <label for="filtroAerolinea">Aerolínea:</label>
-    <select id="filtroAerolinea"></select>
+    <div class="header-logos">
+      <img src="assets/logo-gobierno.png" alt="Gobierno" onerror="this.style.display='none'">
+    </div>
+  </header>
 
-    <label for="filtroHora">Hora:</label>
-    <select id="filtroHora"></select>
+  <div class="dashboard-container">
+    
+    <aside class="sidebar">
+      
+      <div class="card">
+        <h3>TAF MSLP</h3>
+        <pre id="taf-container">Cargando...</pre>
+      </div>
 
-    <label for="filtroTipo">Operación:</label>
-    <select id="filtroTipo">
-      <option value="">Todas</option>
-      <option value="Llegada">Llegada</option>
-      <option value="Salida">Salida</option>
-    </select>
+      <!--<div class="card">
+        <h3>Referencia Operativa</h3>
+        <table class="legend-table">
+          <tr>
+            <td colspan="2"><strong>DEMANDA PREVISTA</strong></td>
+          </tr>
+          <tr>
+            <td><span class="status-box" style="background:var(--color-muy-alta)"></span>MUY ALTA</td>
+            <td>&gt; Capacidad</td>
+          </tr>
+          <tr>
+            <td><span class="status-box" style="background:var(--color-alta)"></span>ALTA</td>
+            <td>80% - 100%</td>
+          </tr>
+          <tr>
+            <td><span class="status-box" style="background:var(--color-media)"></span>MEDIA</td>
+            <td>51% - 79%</td>
+          </tr>
+          <tr>
+            <td><span class="status-box" style="background:var(--color-baja)"></span>BAJA</td>
+            <td>&lt; 50%</td>
+          </tr>
+          <tr>
+            <td colspan="2"><strong>CONDICIÓN MET</strong></td>
+          </tr>
+          <tr>
+            <td><span class="status-box" style="background:var(--color-muy-alta)"></span>BAJO MINIMOS</td>
+            <td>IMC Severo</td>
+          </tr>
+          <tr>
+            <td><span class="status-box" style="background:var(--color-alta)"></span>IMC</td>
+            <td>Adversos</td>
+          </tr>
+          <tr>
+            <td><span class="status-box" style="background:var(--color-baja)"></span>VMC</td>
+            <td>CAVOK / SKC</td>
+          </tr>
+        </table>
+      </div>-->
 
-    <button id="btnLimpiar">Limpiar selección</button>
-    <div id="total">Cargando datos...</div>
+      <div class="card">
+        <h3>INFRAESTRUCTURA AEROPORTUARIA - CNS</h3>
+        <div id="notams-container" class="notams-box">Cargando...</div>
+      </div>
+      
+    </aside>
+
+    <main class="main-content">
+      
+      <div class="controls">
+        <div>
+          <label>Aerolínea:</label>
+          <select id="filtroAerolinea"></select>
+        </div>
+        <div>
+          <label>Hora:</label>
+          <select id="filtroHora"></select>
+        </div>
+        <div>
+          <label>Operación:</label>
+          <select id="filtroTipo">
+            <option value="">Todas</option>
+            <option value="Llegada">Llegada</option>
+            <option value="Salida">Salida</option>
+          </select>
+        </div>
+        <button id="btnLimpiar">Restablecer</button>
+        <div id="total" style="font-weight:bold; color:var(--cepa-blue);">-- Ops</div>
+      </div>
+
+      <div class="card">
+        <h3>Información Gráfica de Demanda Horaria</h3>
+        <canvas id="grafico"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Información Gráfica de Demanda 15 min</h3>
+        <canvas id="grafico15"></canvas>
+      </div>
+
+      <div id="detalleContainer" class="card" style="display:none;">
+        <h3>Detalle de Operaciones Seleccionadas</h3>
+        <table id="tablaDetalle">
+          <thead>
+            <tr>
+              <th>Aero</th>
+              <th>Vuelo</th>
+              <th>Tipo</th>
+              <th>Hora</th>
+              <th>Origen</th>
+              <th>Destino</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+    </main>
   </div>
 
-  <h2>Operaciones por hora</h2>
-  <canvas id="grafico"></canvas>
+  <script>
+    // Script simple para poner la fecha de hoy en el header
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-ES', options).toUpperCase();
+  </script>
 
-  <h2>Operaciones por 15 minutos</h2>
-  <canvas id="grafico15"></canvas>
-
-  <div id="detalleContainer" style="display:none;">
-    <h2>Detalle de operaciones</h2>
-    <p class="muted">Mostrando solo la selección actual.</p>
-    <table id="tablaDetalle">
-      <thead>
-        <tr>
-          <th>Aerolínea</th>
-          <th>Número de vuelo</th>
-          <th>Operación</th>
-          <th>Hora</th>
-          <th>Origen</th>
-          <th>Destino</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <!-- Módulos de la app -->
   <script src="js/app.config.js"></script>
   <script src="js/app.state.js"></script>
   <script src="js/app.utils.js"></script>
   <script src="js/app.data.js"></script>
   <script src="js/app.ui.js"></script>
   <script src="js/app.charts.js"></script>
-  <script src="js/main.js"></script>
   <script src="js/app.taf.js"></script>
-  <script src="js/app.notams.js"></script>
+  <script src="js/app.notams.js"></script> <script src="js/main.js"></script>
 
 </body>
 </html>
