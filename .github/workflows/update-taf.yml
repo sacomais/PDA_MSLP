@@ -19,62 +19,86 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: AVIATION WEATHER CENTER (NOAA) - JSON NATIVO
-      # Fuente oficial, sin bloqueos, sin scraping.
+      # 1. NOTAMS: FAA SCRAPER CON PYTHON (Manejo de Sesión Real)
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (AWC API)
+      - name: Descargar NOTAMs (Python Session)
         run: |
-          echo "Consultando AviationWeather.gov..."
+          # Creamos el script de Python al vuelo
+          cat <<EOF > scrape_notams.py
+          import requests
+          import json
+          import sys
+          import time
+
+          # Configuración para parecer un navegador real
+          headers = {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Referer': 'https://notams.aim.faa.gov/notamSearch/',
+              'Origin': 'https://notams.aim.faa.gov',
+              'X-Requested-With': 'XMLHttpRequest',
+              'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+          }
+
+          try:
+              print("1. Iniciando sesión de navegador...")
+              s = requests.Session()
+              s.headers.update(headers)
+
+              # PASO A: Visitar la home para obtener cookies de sesión
+              r_init = s.get('https://notams.aim.faa.gov/notamSearch/', timeout=15)
+              print(f"   Status Home: {r_init.status_code}")
+              time.sleep(2) # Pausa humana
+
+              # PASO B: Realizar la búsqueda
+              print("2. Buscando NOTAMs para MSLP...")
+              
+              # Payload exacto que envía el navegador (Form Data)
+              payload = {
+                  'searchType': '0',
+                  'designatorsForMessage': 'false',
+                  'designators': 'MSLP',
+                  'notamsOnly': 'false',
+                  'radius': '10',
+                  'sortColumns': 'false'
+              }
+              
+              r_search = s.post('https://notams.aim.faa.gov/notamSearch/search', data=payload, timeout=15)
+              print(f"   Status Búsqueda: {r_search.status_code}")
+
+              if r_search.status_code != 200:
+                  print(f"Error: El servidor respondió {r_search.status_code}")
+                  sys.exit(1)
+
+              # PASO C: Procesar Respuesta
+              data = r_search.json()
+              
+              # La FAA devuelve { "notamList": [ ... ], ... }
+              if 'notamList' in data:
+                  count = len(data['notamList'])
+                  print(f"✅ ÉXITO: Se encontraron {count} NOTAMs.")
+                  
+                  # Guardar JSON
+                  with open('public/data/notams.json', 'w') as f:
+                      json.dump(data, f, indent=2)
+              else:
+                  print("⚠️ Advertencia: Estructura JSON inesperada o vacía.")
+                  print(str(data)[:200]) # Imprimir el inicio para debug
+                  # Crear vacío para no romper
+                  with open('public/data/notams.json', 'w') as f:
+                      json.dump({"notamList": []}, f)
+
+          except Exception as e:
+              print(f"❌ Error crítico en el script: {e}")
+              # Generar archivo vacío de seguridad
+              with open('public/data/notams.json', 'w') as f:
+                  json.dump({"notamList": []}, f)
+              sys.exit(1)
+          EOF
+
+          # Ejecutar el script que acabamos de crear
+          python scrape_notams.py
           
-          # URL oficial de la API Beta de NOAA/AWC
-          # ids=MSLP : Aeropuerto
-          # format=json : Formato que necesitamos
-          
-          curl -s -L -A "Mozilla/5.0" \
-            "https://aviationweather.gov/api/data/notam?ids=MSLP&format=json" \
-            -o public/data/notams_raw.json
-
-          echo "Procesando respuesta..."
-
-          # Usamos Node para adaptar el JSON al formato que espera tu app (notamList)
-          node -e '
-            const fs = require("fs");
-            try {
-              // Leer el archivo descargado
-              const raw = fs.readFileSync("public/data/notams_raw.json", "utf8");
-              
-              // AWC devuelve un array directo: [ { "id": "...", "text": "..." }, ... ]
-              let data = JSON.parse(raw);
-              
-              // Si no es un array (error), lo forzamos
-              if (!Array.isArray(data)) { data = []; }
-              
-              console.log("Se recibieron " + data.length + " NOTAMs.");
-              
-              // Mapeamos los campos para que coincidan con lo que espera tu app.notams.js
-              // Tu app espera: { icaoMessage: "TEXTO...", startDate: "..." }
-              const mapped = data.map(item => {
-                 // AWC pone el texto en "raw" o "text"
-                 return {
-                   notamNumber: item.id, // Ej: A0324/25
-                   icaoMessage: item.raw || item.text || "",
-                   startDate: item.time ? item.time.start : new Date().toISOString(),
-                   endDate: item.time ? item.time.end : null
-                 };
-              });
-              
-              // Guardamos en el formato final
-              const output = { notamList: mapped };
-              fs.writeFileSync("public/data/notams.json", JSON.stringify(output, null, 2));
-              
-            } catch (e) {
-              console.error("Error procesando JSON:", e);
-              // Generar vacío en caso de error
-              fs.writeFileSync("public/data/notams.json", JSON.stringify({ notamList: [] }));
-            }
-          '
-
-          echo "Vista previa:"
+          echo "Vista previa del archivo generado:"
           head -n 20 public/data/notams.json
 
       # ------------------------------------------------------------------
