@@ -105,5 +105,152 @@
     }
   }
 
-  window.APP_UI = { poblarFiltroAerolinea, poblarFiltroHora, bindEventos, updateTotal, renderDetalle };
+  function updateBlocksSummary(llegadas, salidas) {
+    const C = window.APP_CONFIG; 
+    const CAP = C.CAPACIDAD_DECLARADA_HORA; 
+
+    // Definición de rangos horarios
+    const rangos = {
+      manana: [6, 7, 8, 9, 10, 11],
+      tarde:  [12, 13, 14, 15, 16, 17],
+      noche:  [18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4] 
+    };
+
+    // Función auxiliar para calcular estado
+    const getEstado = (horasIndices) => {
+      let maxOps = 0;
+      horasIndices.forEach(h => {
+        const totalHora = (llegadas[h] || 0) + (salidas[h] || 0);
+        if (totalHora > maxOps) maxOps = totalHora;
+      });
+
+      const porcentaje = (maxOps / CAP) * 100;
+      
+      // Clasificación según PPT
+      if (porcentaje > 100) return { text: 'MUY ALTA', color: 'var(--color-muy-alta)', font: 'white' };
+      if (porcentaje >= 80) return { text: 'ALTA',      color: 'var(--color-alta)',     font: 'white' };
+      if (porcentaje >= 51) return { text: 'MEDIA',     color: 'var(--color-media)',    font: 'black' };
+      return                       { text: 'BAJA',      color: 'var(--color-baja)',     font: 'white' };
+    };
+
+    // Aplicar a la UI
+    ['manana', 'tarde', 'noche'].forEach(periodo => {
+      const estado = getEstado(rangos[periodo]);
+      const celda = document.getElementById(`demanda-${periodo}`);
+      if (celda) {
+        celda.textContent = estado.text;
+        celda.style.backgroundColor = estado.color;
+        celda.style.color = estado.font;
+      }
+    });
+  }
+
+  // ============================================================
+  //  LÓGICA DE PRONÓSTICO AUTOMÁTICO (TAF PARSER)
+  // ============================================================
+
+  const ESTADOS_MET = {
+    VMC: { text: 'VMC', class: 'met-vmc' },
+    IMC: { text: 'IMC', class: 'met-imc' },
+    MIN: { text: 'BAJO MINIMOS', class: 'met-minimos' }
+  };
+
+  /**
+   * Función principal que se llama al cargar el TAF.
+   * Analiza el texto y actualiza las celdas de Mañana, Tarde y Noche.
+   */
+  function actualizarPronosticoDesdeTAF() {
+    const tafElement = document.getElementById('taf-container');
+    if (!tafElement) return;
+
+    const rawTaf = tafElement.textContent.trim().toUpperCase();
+    
+    // Si el TAF no está cargado o es nulo
+    if (!rawTaf || rawTaf.includes('CARGANDO') || rawTaf.includes('NO DISPONIBLE')) return;
+
+    // 1. Calcular la severidad basada en las reglas estrictas
+    const resultado = calcularSeveridad(rawTaf);
+
+    // 2. Aplicar el resultado a los 3 bloques horarios
+    // (Asumimos que si el TAF indica riesgo, aplica como alerta para la operación del día)
+    ['pronostico-manana', 'pronostico-tarde', 'pronostico-noche'].forEach(id => {
+      const celda = document.getElementById(id);
+      if (celda) {
+        // Limpiamos clases y contenido
+        celda.className = 'status-cell'; 
+        celda.classList.add(resultado.class);
+        celda.textContent = resultado.text;
+        
+        // Bloquear edición manual
+        celda.removeAttribute('contenteditable');
+      }
+    });
+  }
+
+  /**
+   * Motor de reglas meteorológicas
+   * Retorna el objeto de estado (MIN, IMC o VMC)
+   */
+  function calcularSeveridad(taf) {
+    // Expresiones Regulares para extraer valores
+
+    // 1. Visibilidad: Busca 4 dígitos (ej: 9999, 0800, 4000)
+    // Evitamos años/horas usando límites de palabra y asumiendo formato METAR/TAF
+    const regexVis = /\b(\d{4})\b/g;
+
+    // 2. Techo de Nubes: Busca BKN, OVC o VV seguido de 3 dígitos (ej: OVC010, BKN005)
+    const regexCig = /(?:BKN|OVC|VV)(\d{3})/g;
+
+    // 3. Palabras Clave Peligrosas
+    const keywordsPeligro = ['TS', 'TSRA', 'SHRA']; 
+
+    // --- REGLA 1: BAJO MÍNIMOS (ROJO) ---
+    // Criterio: Vis < 800m OR Techo < 300ft (003)
+    
+    // Chequeo de Visibilidad ROJA
+    let matchVis;
+    while ((matchVis = regexVis.exec(taf)) !== null) {
+      const val = parseInt(matchVis[1], 10);
+      if (val < 800) return ESTADOS_MET.MIN;
+    }
+
+    // Chequeo de Techo ROJO
+    let matchCig;
+    while ((matchCig = regexCig.exec(taf)) !== null) {
+      const altura = parseInt(matchCig[1], 10);
+      if (altura < 3) return ESTADOS_MET.MIN; // 003 = 300ft
+    }
+
+
+    // --- REGLA 2: IMC (NARANJA) ---
+    // Criterio: Vis < 5000m OR Techo < 1000ft (010) OR Keywords (TS, TSRA, SHRA)
+
+    // Resetear regex index para volver a buscar
+    regexVis.lastIndex = 0; 
+    regexCig.lastIndex = 0;
+
+    // Chequeo de Visibilidad NARANJA
+    while ((matchVis = regexVis.exec(taf)) !== null) {
+      const val = parseInt(matchVis[1], 10);
+      if (val < 5000) return ESTADOS_MET.IMC;
+    }
+
+    // Chequeo de Techo NARANJA
+    while ((matchCig = regexCig.exec(taf)) !== null) {
+      const altura = parseInt(matchCig[1], 10);
+      if (altura < 10) return ESTADOS_MET.IMC; // 010 = 1000ft
+    }
+
+    // Chequeo de Keywords
+    const contienePeligro = keywordsPeligro.some(kw => taf.includes(kw));
+    if (contienePeligro) return ESTADOS_MET.IMC;
+
+
+    // --- REGLA 3: VMC (VERDE) ---
+    // Si no cayó en ninguno de los anteriores, asumimos condiciones favorables
+    // (CAVOK, SKC, >5km, >1000ft)
+    return ESTADOS_MET.VMC;
+  }
+
+  window.APP_UI = { poblarFiltroAerolinea, poblarFiltroHora, bindEventos, updateTotal, renderDetalle, updateBlocksSummary, actualizarPronosticoDesdeTAF };
 })();
