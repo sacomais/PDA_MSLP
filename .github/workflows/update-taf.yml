@@ -19,98 +19,109 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: FAA PILOTWEB via CHROME (SELENIUM)
-      # Simula un navegador real para evitar bloqueos de seguridad.
+      # 1. NOTAMS: BROWSER INCEPTION (SELENIUM + API INJECTION)
+      # Usamos el navegador para autenticar y JS para extraer JSON puro.
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (Chrome Headless)
+      - name: Descargar NOTAMs (Selenium API Injection)
         run: |
-          # 1. Instalar Selenium (Controlador de navegador)
-          pip install selenium webdriver-manager beautifulsoup4
+          # 1. Instalar dependencias
+          pip install selenium webdriver-manager
 
-          # 2. Crear script de Python que controla Chrome
-          cat <<EOF > scrape_chrome.py
+          # 2. Script de Python "Maestro"
+          cat <<EOF > scrape_notams.py
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
-          from bs4 import BeautifulSoup
           import json
-          import re
           import time
           import sys
 
-          # Configurar Chrome en modo "Headless" (sin pantalla visible)
+          # Configurar Chrome Headless
           options = Options()
-          options.add_argument("--headless") 
+          options.add_argument("--headless")
           options.add_argument("--no-sandbox")
           options.add_argument("--disable-dev-shm-usage")
           options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-          print("1. Iniciando navegador Chrome...")
           driver = webdriver.Chrome(options=options)
 
           try:
-              # PASO A: Ir a la Home de PilotWeb para obtener cookies legítimas
-              print("2. Accediendo a FAA PilotWeb (Home)...")
-              driver.get("https://pilotweb.nas.faa.gov/PilotWeb/")
-              time.sleep(3) # Esperar carga inicial
-
-              # PASO B: Navegar directo a la URL de resultados de MSLP
-              # Al tener cookies del paso A, ya no nos redirige.
-              print("3. Buscando resultados para MSLP...")
-              target_url = "https://pilotweb.nas.faa.gov/PilotWeb/notamRetrievalByICAOAction.do?method=displayByICAOs&reportType=REPORT&actionType=notamRetrievalByICAOs&retrieveLocId=MSLP&formatType=ICAO"
-              driver.get(target_url)
-              time.sleep(2)
-
-              # PASO C: Extraer el HTML resultante
-              html_content = driver.page_source
+              print("1. Cargando aplicación FAA para obtener sesión...")
+              # Entramos a la home para obtener cookies de seguridad
+              driver.get("https://notams.aim.faa.gov/notamSearch/")
               
-              # Usar BeautifulSoup para leer el HTML
-              soup = BeautifulSoup(html_content, 'html.parser')
-              text = soup.get_text(separator=' ', strip=True)
+              # Esperamos a que la aplicación Angular cargue y asigne cookies
+              time.sleep(5)
               
-              print("4. Procesando texto extraído...")
+              print("2. Inyectando solicitud API interna...")
               
-              # Buscar patrones de NOTAM: Letra + 4 digitos + / + 2 digitos (Ej: A0459/25)
-              # Regex: Busca el ID y captura el contenido hasta el próximo ID
-              pattern = re.compile(r'([A-Z]\d{4}/\d{2})(.*?)(?=[A-Z]\d{4}/\d{2}|End of Report|Account|$)', re.DOTALL)
-              matches = pattern.findall(text)
-
-              notams_list = []
+              # ESTA ES LA CLAVE:
+              # Ejecutamos Javascript DENTRO del navegador.
+              # El navegador usa sus propias cookies para hacer la petición POST.
+              # Usamos execute_async_script para esperar la respuesta de la red.
               
-              for match in matches:
-                  nid = match[0].strip()
-                  content = match[1].strip()
+              js_script = """
+                  var callback = arguments[arguments.length - 1];
+                  var xhr = new XMLHttpRequest();
+                  xhr.open('POST', 'https://notams.aim.faa.gov/notamSearch/search', true);
+                  xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+                  xhr.setRequestHeader('Accept', 'application/json, text/javascript, */*; q=0.01');
+                  xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                   
-                  # Limpieza básica
-                  full_msg = f"{nid} {content}"
+                  xhr.onreadystatechange = function() {
+                      if (xhr.readyState == 4) {
+                          // Devolvemos el texto de la respuesta a Python
+                          callback({
+                              status: xhr.status,
+                              text: xhr.responseText
+                          });
+                      }
+                  };
                   
-                  # Filtro de ruido
-                  if len(content) > 10 and "Account" not in nid:
-                      notams_list.append({
-                          "notamNumber": nid,
-                          "icaoMessage": full_msg,
-                          "startDate": "2025-01-01T00:00:00Z" # Fecha dummy
-                      })
-
-              print(f"✅ ÉXITO: Se encontraron {len(notams_list)} NOTAMs.")
+                  // Payload oficial para buscar MSLP
+                  var data = "searchType=0&designatorsForMessage=false&designators=MSLP&notamsOnly=false&radius=10";
+                  xhr.send(data);
+              """
               
-              # Guardar JSON
-              output = { "notamList": notams_list }
-              with open('public/data/notams.json', 'w') as f:
-                  json.dump(output, f, indent=2)
+              # Ejecutar el JS y esperar respuesta
+              response = driver.execute_async_script(js_script)
+              
+              status = response.get('status')
+              raw_text = response.get('text')
+              
+              print(f"3. Respuesta API recibida. Status: {status}")
+
+              if status == 200 and raw_text:
+                  data = json.loads(raw_text)
+                  
+                  if 'notamList' in data:
+                      count = len(data['notamList'])
+                      print(f"✅ ÉXITO: Se encontraron {count} NOTAMs oficiales.")
+                      
+                      # Guardamos el JSON tal cual, es compatible con tu JS
+                      with open('public/data/notams.json', 'w') as f:
+                          json.dump(data, f, indent=2)
+                  else:
+                      print("⚠️ Estructura JSON desconocida.")
+                      print(raw_text[:200])
+                      # Fallback vacío
+                      with open('public/data/notams.json', 'w') as f:
+                          json.dump({"notamList": []}, f)
+              else:
+                  print("❌ Error en la llamada API interna.")
+                  with open('public/data/notams.json', 'w') as f:
+                          json.dump({"notamList": []}, f)
 
           except Exception as e:
-              print(f"❌ Error durante el scraping: {e}")
-              # Generar vacío por seguridad
+              print(f"❌ Error crítico Selenium: {e}")
               with open('public/data/notams.json', 'w') as f:
                   json.dump({"notamList": []}, f)
               sys.exit(1)
-              
           finally:
               driver.quit()
           EOF
 
           # 3. Ejecutar
-          python scrape_chrome.py
+          python scrape_notams.py
           
           echo "Vista previa:"
           head -n 20 public/data/notams.json
