@@ -21,12 +21,31 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: Se descargan SIEMPRE (cada hora)
+      # 1. NOTAMS: Fuente Oficial FAA (Sin API Key)
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (Siempre)
+      - name: Descargar NOTAMs (FAA Official)
         run: |
-          echo "Descargando NOTAMs mas recientes..."
-          curl -s "https://api.aviationapi.com/v1/notams?apt=MSLP" -o public/data/notams.json
+          echo "Consultando API de la FAA..."
+          
+          # La FAA usa un endpoint POST que devuelve JSON.
+          # Enviamos los parámetros para buscar por ICAO: MSLP
+          
+          curl -s -X POST "https://notams.aim.faa.gov/notamSearch/search" \
+               -H "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" \
+               -d "searchType=0&designatorsForMessage=false&designators=MSLP&notamsOnly=false&radius=10" \
+               -o public/data/notams_faa.json
+
+          echo "Respuesta recibida. Filtrando datos..."
+          
+          # La FAA devuelve mucha "basura" técnica. Vamos a limpiar y guardar solo la lista.
+          # Usamos 'jq' (JSON Processor) que ya viene instalado en GitHub Actions, 
+          # o simplemente guardamos el archivo tal cual y lo procesamos en JS.
+          # Para simplificar, guardamos el raw y dejamos que el JS haga el trabajo sucio.
+          
+          mv public/data/notams_faa.json public/data/notams.json
+          
+          echo "Vista previa:"
+          head -c 200 public/data/notams.json
 
       # ------------------------------------------------------------------
       # 2. TAF y EXCEL: Solo a las 05:00 UTC (o si es manual)
