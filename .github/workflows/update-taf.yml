@@ -19,23 +19,23 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: BROWSER INCEPTION (SELENIUM + API INJECTION)
-      # Usamos el navegador para autenticar y JS para extraer JSON puro.
+      # 1. NOTAMS: SELENIUM VISUAL TEXT EXTRACTOR (PLAN FINAL)
+      # Estrategia: "Ctrl+A, Ctrl+C" del texto visible en PilotWeb
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (Selenium API Injection)
+      - name: Descargar NOTAMs (Visual Extractor)
         run: |
-          # 1. Instalar dependencias
           pip install selenium webdriver-manager
 
-          # 2. Script de Python "Maestro"
           cat <<EOF > scrape_notams.py
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
           import json
+          import re
           import time
           import sys
 
-          # Configurar Chrome Headless
+          # Configurar Chrome
           options = Options()
           options.add_argument("--headless")
           options.add_argument("--no-sandbox")
@@ -45,74 +45,60 @@ jobs:
           driver = webdriver.Chrome(options=options)
 
           try:
-              print("1. Cargando aplicación FAA para obtener sesión...")
-              # Entramos a la home para obtener cookies de seguridad
-              driver.get("https://notams.aim.faa.gov/notamSearch/")
+              # URL Directa de PilotWeb para MSLP
+              url = "https://pilotweb.nas.faa.gov/PilotWeb/notamRetrievalByICAOAction.do?method=displayByICAOs&reportType=REPORT&actionType=notamRetrievalByICAOs&retrieveLocId=MSLP&formatType=ICAO"
               
-              # Esperamos a que la aplicación Angular cargue y asigne cookies
-              time.sleep(5)
-              
-              print("2. Inyectando solicitud API interna...")
-              
-              # ESTA ES LA CLAVE:
-              # Ejecutamos Javascript DENTRO del navegador.
-              # El navegador usa sus propias cookies para hacer la petición POST.
-              # Usamos execute_async_script para esperar la respuesta de la red.
-              
-              js_script = """
-                  var callback = arguments[arguments.length - 1];
-                  var xhr = new XMLHttpRequest();
-                  xhr.open('POST', 'https://notams.aim.faa.gov/notamSearch/search', true);
-                  xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
-                  xhr.setRequestHeader('Accept', 'application/json, text/javascript, */*; q=0.01');
-                  xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                  
-                  xhr.onreadystatechange = function() {
-                      if (xhr.readyState == 4) {
-                          // Devolvemos el texto de la respuesta a Python
-                          callback({
-                              status: xhr.status,
-                              text: xhr.responseText
-                          });
-                      }
-                  };
-                  
-                  // Payload oficial para buscar MSLP
-                  var data = "searchType=0&designatorsForMessage=false&designators=MSLP&notamsOnly=false&radius=10";
-                  xhr.send(data);
-              """
-              
-              # Ejecutar el JS y esperar respuesta
-              response = driver.execute_async_script(js_script)
-              
-              status = response.get('status')
-              raw_text = response.get('text')
-              
-              print(f"3. Respuesta API recibida. Status: {status}")
+              print(f"1. Accediendo a: {url}")
+              driver.get(url)
+              time.sleep(5) # Esperar renderizado completo
 
-              if status == 200 and raw_text:
-                  data = json.loads(raw_text)
+              # ESTRATEGIA: Obtener el TEXTO PURO (Lo que ve el usuario)
+              # Evitamos parsear HTML sucio.
+              body_text = driver.find_element(By.TAG_NAME, "body").text
+              
+              print("2. Texto visual extraído. Analizando...")
+              
+              # Depuración: Mostrar primeros caracteres para asegurar que cargó
+              print(f"--- INICIO TEXTO VISUAL ---\n{body_text[:500]}\n--- FIN PREVIEW ---")
+
+              # Expresión Regular Agresiva
+              # Busca: Letra(A) + 4 Digitos + / + 2 Digitos
+              # Ej: A0459/25
+              # Captura todo hasta el siguiente salto de línea doble o fin de patrón
+              
+              # Dividimos el texto en bloques usando el ID del NOTAM como separador
+              # El (?=...) es un "lookahead" para no consumir el siguiente ID
+              chunks = re.split(r'(?=[A-Z]\d{4}/\d{2})', body_text)
+
+              notams_list = []
+              
+              for chunk in chunks:
+                  chunk = chunk.strip()
+                  # Verificar si el chunk empieza con un ID válido (Ej: A0123/25)
+                  match_id = re.match(r'^([A-Z]\d{4}/\d{2})', chunk)
                   
-                  if 'notamList' in data:
-                      count = len(data['notamList'])
-                      print(f"✅ ÉXITO: Se encontraron {count} NOTAMs oficiales.")
+                  if match_id:
+                      nid = match_id.group(1)
+                      # Limpieza: Quitar saltos de linea excesivos
+                      message = chunk.replace('\n', ' ').strip()
                       
-                      # Guardamos el JSON tal cual, es compatible con tu JS
-                      with open('public/data/notams.json', 'w') as f:
-                          json.dump(data, f, indent=2)
-                  else:
-                      print("⚠️ Estructura JSON desconocida.")
-                      print(raw_text[:200])
-                      # Fallback vacío
-                      with open('public/data/notams.json', 'w') as f:
-                          json.dump({"notamList": []}, f)
-              else:
-                  print("❌ Error en la llamada API interna.")
-                  with open('public/data/notams.json', 'w') as f:
-                          json.dump({"notamList": []}, f)
+                      # Filtro: Ignorar si es solo el ID o basura
+                      if len(message) > 15:
+                          notams_list.append({
+                              "notamNumber": nid,
+                              "icaoMessage": message,
+                              "startDate": "2025-01-01T00:00:00Z" # Fecha genérica
+                          })
+
+              print(f"✅ ÉXITO: Se procesaron {len(notams_list)} NOTAMs.")
+
+              # Guardar JSON
+              output = { "notamList": notams_list }
+              with open('public/data/notams.json', 'w') as f:
+                  json.dump(output, f, indent=2)
 
           except Exception as e:
-              print(f"❌ Error crítico Selenium: {e}")
+              print(f"❌ Error crítico: {e}")
               with open('public/data/notams.json', 'w') as f:
                   json.dump({"notamList": []}, f)
               sys.exit(1)
@@ -120,7 +106,159 @@ jobs:
               driver.quit()
           EOF
 
-          # 3. Ejecutar
+          python scrape_notams.py
+          
+          echo "Vista previa:"
+          head -n 20 public/data/notams.json
+
+      # ------------------------------------------------------------------
+      # 2. TAF y EXCEL: SOLO A LAS 05:00 UTC (O MANUAL)
+      # ------------------------------------------------------------------
+      - name: Descargar TAF y Excel (Condicional)
+        run: |
+          CURRENT_HOUR=$(date -u +%H)
+          
+          if [ "$CURRENT_HOUR" == "05" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Actualizando TAF y Excel..."
+            
+            # TAF
+            curl -s "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/MSLP.TXT" -o tmp_taf.txt
+            taf_block=$(awk '/^TAF MSLP/{flag=1} flag{print} /^$/{if(flag){exit}}' tmp_taf.txt)
+            if echo "$taf_block" | head -1 | grep -qE "03[0-5][0-9]Z"; then
+              echo "$taf_block" > public/data/taf-today.txt
+            else
+              echo "NIL" > public/data/taf-today.txt
+            fi
+
+            # EXCEL
+            file_id="1VCS87YR2-O4tJLaJJMVAZtBTPYEQG9fQ"
+            curl -L "https://drive.google.com/uc?export=download&id=${file_id}" -o public/operaciones.xlsx
+          else
+            echo "Se salta la actualización de TAF/Excel (Solo 05 UTC)."
+          fi
+
+      # ------------------------------------------------------------------
+      # 3. GUARDAR CAMBIOS
+      # ------------------------------------------------------------------
+      - name: Configurar Git y Guardar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/taf-today.txt public/operaciones.xlsx public/data/notams.json || true
+          
+          if git diff --cached --quiet; then
+            echo "No hay cambios."
+          else
+            git commit -m "Auto-update data $(date -u '+%H:%M UTC')"
+            git push origin main
+          finame: Update Data (NOTAMs Hourly / TAF Daily)
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Cada hora
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup folders
+        run: mkdir -p public/data
+
+      # ------------------------------------------------------------------
+      # 1. NOTAMS: SELENIUM VISUAL TEXT EXTRACTOR (PLAN FINAL)
+      # Estrategia: "Ctrl+A, Ctrl+C" del texto visible en PilotWeb
+      # ------------------------------------------------------------------
+      - name: Descargar NOTAMs (Visual Extractor)
+        run: |
+          pip install selenium webdriver-manager
+
+          cat <<EOF > scrape_notams.py
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+          import json
+          import re
+          import time
+          import sys
+
+          # Configurar Chrome
+          options = Options()
+          options.add_argument("--headless")
+          options.add_argument("--no-sandbox")
+          options.add_argument("--disable-dev-shm-usage")
+          options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+          driver = webdriver.Chrome(options=options)
+
+          try:
+              # URL Directa de PilotWeb para MSLP
+              url = "https://pilotweb.nas.faa.gov/PilotWeb/notamRetrievalByICAOAction.do?method=displayByICAOs&reportType=REPORT&actionType=notamRetrievalByICAOs&retrieveLocId=MSLP&formatType=ICAO"
+              
+              print(f"1. Accediendo a: {url}")
+              driver.get(url)
+              time.sleep(5) # Esperar renderizado completo
+
+              # ESTRATEGIA: Obtener el TEXTO PURO (Lo que ve el usuario)
+              # Evitamos parsear HTML sucio.
+              body_text = driver.find_element(By.TAG_NAME, "body").text
+              
+              print("2. Texto visual extraído. Analizando...")
+              
+              # Depuración: Mostrar primeros caracteres para asegurar que cargó
+              print(f"--- INICIO TEXTO VISUAL ---\n{body_text[:500]}\n--- FIN PREVIEW ---")
+
+              # Expresión Regular Agresiva
+              # Busca: Letra(A) + 4 Digitos + / + 2 Digitos
+              # Ej: A0459/25
+              # Captura todo hasta el siguiente salto de línea doble o fin de patrón
+              
+              # Dividimos el texto en bloques usando el ID del NOTAM como separador
+              # El (?=...) es un "lookahead" para no consumir el siguiente ID
+              chunks = re.split(r'(?=[A-Z]\d{4}/\d{2})', body_text)
+
+              notams_list = []
+              
+              for chunk in chunks:
+                  chunk = chunk.strip()
+                  # Verificar si el chunk empieza con un ID válido (Ej: A0123/25)
+                  match_id = re.match(r'^([A-Z]\d{4}/\d{2})', chunk)
+                  
+                  if match_id:
+                      nid = match_id.group(1)
+                      # Limpieza: Quitar saltos de linea excesivos
+                      message = chunk.replace('\n', ' ').strip()
+                      
+                      # Filtro: Ignorar si es solo el ID o basura
+                      if len(message) > 15:
+                          notams_list.append({
+                              "notamNumber": nid,
+                              "icaoMessage": message,
+                              "startDate": "2025-01-01T00:00:00Z" # Fecha genérica
+                          })
+
+              print(f"✅ ÉXITO: Se procesaron {len(notams_list)} NOTAMs.")
+
+              # Guardar JSON
+              output = { "notamList": notams_list }
+              with open('public/data/notams.json', 'w') as f:
+                  json.dump(output, f, indent=2)
+
+          except Exception as e:
+              print(f"❌ Error crítico: {e}")
+              with open('public/data/notams.json', 'w') as f:
+                  json.dump({"notamList": []}, f)
+              sys.exit(1)
+          finally:
+              driver.quit()
+          EOF
+
           python scrape_notams.py
           
           echo "Vista previa:"
