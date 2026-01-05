@@ -1,36 +1,158 @@
-/* ATFM Dashboard v1.2 — styles.css */
-body { font-family: Arial, sans-serif; margin: 20px; }
-.controls { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-label { font-weight: bold; }
-#total { font-size: 1.05em; margin-left: auto; white-space: nowrap; }
-canvas { max-width: 100%; height: 360px; }
-h2 { margin-top: 24px; }
-table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-th { background: #f4f4f4; }
-.muted { color: #666; font-size: 0.95em; margin: 6px 0 0; }
-/* Estilos para NOTAMs */
-.notams-box {
-  background-color: #fafafa;
-  border: 1px solid #ccc;
-  padding: 10px;
-  max-height: 300px; /* Altura máxima con scroll */
-  overflow-y: auto;
-  font-family: "Courier New", monospace; /* Fuente tipo teletipo */
-  font-size: 0.9em;
+/* ATFM Dashboard - Estilo Institucional PDA MSLP */
+:root {
+  --cepa-blue: #002F6C;    /* Azul oscuro institucional */
+  --cepa-light: #0056b3;   /* Azul más claro para acentos */
+  --bg-color: #e9ecef;     /* Fondo gris suave */
+  --card-bg: #ffffff;
+  --text-main: #333333;
+  
+  /* Colores de Severidad del PPTX */
+  --color-muy-alta: #d32f2f; /* Rojo */
+  --color-alta: #f57c00;     /* Naranja */
+  --color-media: #fbc02d;    /* Amarillo */
+  --color-baja: #388e3c;     /* Verde */
 }
 
-.notam-list {
-  list-style-type: none;
-  padding: 0;
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+}
+
+/* --- ENCABEZADO TIPO PPT --- */
+header.top-bar {
+  background-color: var(--card-bg);
+  border-bottom: 4px solid var(--cepa-blue);
+  padding: 15px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.header-logos img {
+  height: 60px; /* Ajusta según tus imágenes */
+  width: auto;
+}
+
+.header-title {
+  text-align: center;
+  flex-grow: 1;
+}
+
+.header-title h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--cepa-blue);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.header-title h2 {
+  margin: 5px 0 0;
+  font-size: 1.8rem;
+  color: #222;
+  font-weight: 800;
+}
+
+.current-date {
+  margin-top: 5px;
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: bold;
+}
+
+/* --- LAYOUT DEL DASHBOARD --- */
+.dashboard-container {
+  display: grid;
+  grid-template-columns: 350px 1fr; /* Barra lateral izq, contenido der */
+  gap: 20px;
+  padding: 20px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* Paneles / Tarjetas */
+.card {
+  background: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  padding: 15px;
+  margin-bottom: 20px;
+  border-left: 5px solid var(--cepa-blue);
+}
+
+.card h3 {
+  margin-top: 0;
+  color: var(--cepa-blue);
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  font-size: 1.1rem;
+}
+
+/* --- NOTAMS y TAF --- */
+#taf-container {
+  background: #f8f9fa;
+  padding: 10px;
+  border: 1px solid #ddd;
+  font-family: 'Consolas', monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  color: #000;
+}
+
+.notams-box {
+  max-height: 400px;
+  overflow-y: auto;
+  font-size: 0.85rem;
 }
 
 .notam-item {
-  border-bottom: 1px solid #eee;
   padding: 8px 0;
+  border-bottom: 1px solid #eee;
 }
 
-.notam-item:last-child {
-  border-bottom: none;
+/* --- TABLAS DE LEYENDA (Del PPT) --- */
+.legend-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-top: 10px;
 }
+
+.legend-table td {
+  padding: 6px;
+  border: 1px solid #ddd;
+}
+
+.status-box {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+  border-radius: 2px;
+}
+
+/* --- CONTROLES Y GRAFICOS --- */
+.controls {
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+canvas {
+  max-height: 400px;
+}
+
+/* Utilidades de color */
+.bg-red { background-color: var(--color-muy-alta); color: white; padding: 2px 6px; border-radius: 4px; }
+.bg-orange { background-color: var(--color-alta); color: white; padding: 2px 6px; border-radius: 4px; }
+.bg-yellow { background-color: var(--color-media); color: black; padding: 2px 6px; border-radius: 4px; }
+.bg-green { background-color: var(--color-baja); color: white; padding: 2px 6px; border-radius: 4px; }
