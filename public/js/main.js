@@ -13,6 +13,9 @@
     window.APP_UI.updateTotal(llegadas, salidas, llegadas15, salidas15);
     window.APP_UI.renderDetalle(detalle);
 
+    // NUEVO: Actualizar la tabla de bloques Mañana/Tarde/Noche
+    window.APP_UI.updateBlocksSummary(llegadas, salidas);
+
     window.APP_CHARTS.buildHourlyChart(llegadas, salidas);
     window.APP_CHARTS.buildQuarterChart(llegadas15, salidas15);
   }
