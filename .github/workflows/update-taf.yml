@@ -20,48 +20,38 @@ jobs:
       - name: Setup folders
         run: mkdir -p public/data
 
+     # ------------------------------------------------------------------
+      # NOTAMS: FAA OFICIAL (Corrección JSON Payload)
       # ------------------------------------------------------------------
-      # NOTAMS: FAA OFICIAL (Con manejo de Sesión/Cookies)
-      # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (FAA Session Fix)
+      - name: Descargar NOTAMs (JSON Mode)
         run: |
-          echo "1. Inicializando sesión con la FAA..."
+          echo "Consultando API de la FAA con payload JSON..."
           
-          # Paso A: Visitamos la home para obtener la cookie JSESSIONID
-          # Guardamos las "llaves" en cookies.txt
-          curl -s -c cookies.txt -b cookies.txt \
-               -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36" \
-               "https://notams.aim.faa.gov/notamSearch/" > /dev/null
-
-          echo "2. Consultando base de datos..."
+          # 1. Definimos el payload exacto que usa la web oficial
+          # 'designators' debe ser un array, no un string simple.
           
-          # Paso B: Hacemos la búsqueda usando las cookies del Paso A.
-          # Esto evita el error 302 (Redirección).
-          curl -s -c cookies.txt -b cookies.txt \
-               -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36" \
-               -X POST "https://notams.aim.faa.gov/notamSearch/search" \
-               -H "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" \
-               -H "Accept: application/json, text/javascript, */*; q=0.01" \
-               -H "X-Requested-With: XMLHttpRequest" \
-               -d "searchType=0&designatorsForMessage=false&designators=MSLP&notamsOnly=false&radius=10" \
+          curl -v -X POST "https://notams.aim.faa.gov/notamSearch/search" \
+               -H "Content-Type: application/json" \
+               -H "Accept: application/json, text/plain, */*" \
+               -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+               --data-raw '{"searchType":0,"designators":["MSLP"],"notamsOnly":false,"radius":"10"}' \
                -o public/data/notams_faa.json
 
-          echo "3. Procesando respuesta..."
-
-          # Verificamos si descargó algo válido
+          echo "Código de salida: $?"
+          
+          # 2. Verificación y Procesado
           if [ -s public/data/notams_faa.json ]; then
-            
-            # Movemos el archivo a la ruta final
-            mv public/data/notams_faa.json public/data/notams.json
-            
-            echo "✅ NOTAMs oficiales descargados correctamente."
-            echo "Vista previa:"
-            head -c 200 public/data/notams.json
-            
+             echo "✅ Respuesta recibida. Tamaño: $(ls -lh public/data/notams_faa.json | awk '{print $5}')"
+             
+             # Movemos el archivo
+             mv public/data/notams_faa.json public/data/notams.json
+             
+             # Mostramos una muestra para asegurar que no sea un array vacío []
+             echo "Muestra de datos:"
+             head -c 300 public/data/notams.json
           else
-            echo "❌ Error: No se pudo conectar con la FAA. Se generará lista vacía."
-            echo '{ "notamList": [] }' > public/data/notams.json
-            # No hacemos exit 1 para que el resto del workflow (TAF/Excel) no se cancele.
+             echo "❌ Error: El servidor no devolvió datos."
+             exit 1
           fi
 
       # ------------------------------------------------------------------
