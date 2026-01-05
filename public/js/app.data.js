@@ -5,7 +5,12 @@
   const U = window.APP_UTILS;
 
   async function cargarDatos() {
-    const resp = await fetch(URL_EXCEL);
+    // Agregamos un timestamp para obligar al navegador a bajar la versión nueva
+    // y no usar la memoria caché.
+    const urlNoCache = `${URL_EXCEL}?t=${new Date().getTime()}`;
+  
+    const resp = await fetch(urlNoCache);
+    // ... resto del código ...
     const arrayBuffer = await resp.arrayBuffer();
     const libro = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
     const hoja = libro.Sheets[libro.SheetNames[0]];
