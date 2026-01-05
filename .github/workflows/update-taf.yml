@@ -23,28 +23,36 @@ jobs:
       # ------------------------------------------------------------------
       # 1. NOTAMS: Fuente Oficial FAA (Sin API Key)
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (FAA Official - HTTP/1.1 Fix)
+      - name: Descargar NOTAMs (FAA Official - Headers Fix)
         run: |
-          echo "Consultando API de la FAA..."
+          echo "Consultando API de la FAA con Headers XHR..."
           
-          # Usamos --http1.1 para evitar el error 'stream error 92'
-          # Usamos -A para simular ser un navegador Firefox
+          # Cambios importantes:
+          # 1. -v : Verbose (para ver el error HTTP si falla)
+          # 2. Eliminamos -s : Para no silenciar errores
+          # 3. Headers extra: Simulan una petición AJAX real (X-Requested-With)
           
-          curl -s --http1.1 -A "Mozilla/5.0" -X POST "https://notams.aim.faa.gov/notamSearch/search" \
+          curl -v --http1.1 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" \
+               -X POST "https://notams.aim.faa.gov/notamSearch/search" \
                -H "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" \
+               -H "Accept: application/json, text/javascript, */*; q=0.01" \
+               -H "X-Requested-With: XMLHttpRequest" \
+               -H "Origin: https://notams.aim.faa.gov" \
+               -H "Referer: https://notams.aim.faa.gov/notamSearch/" \
                -d "searchType=0&designatorsForMessage=false&designators=MSLP&notamsOnly=false&radius=10" \
                -o public/data/notams_faa.json
 
-          echo "Respuesta recibida."
+          echo "Código de salida de curl: $?"
           
-          # Verificación de seguridad: ¿El archivo existe y tiene datos?
           if [ -s public/data/notams_faa.json ]; then
+            echo "✅ Datos recibidos. Tamaño del archivo: $(ls -lh public/data/notams_faa.json | awk '{print $5}')"
             mv public/data/notams_faa.json public/data/notams.json
-            echo "✅ Datos guardados correctamente."
-            echo "Vista previa de los primeros caracteres:"
+            echo "Vista previa:"
             head -c 200 public/data/notams.json
           else
-            echo "❌ Error: La descarga falló o el archivo está vacío."
+            echo "❌ Error: El archivo está vacío. Revisar logs de curl arriba."
+            # Si falla, no rompemos el workflow, creamos un JSON vacío para que la web no se rompa
+            echo '{ "notamList": [] }' > public/data/notams.json
             exit 1
           fi
 
