@@ -2,8 +2,7 @@ name: Update Data (NOTAMs Hourly / TAF Daily)
 
 on:
   schedule:
-    # Se ejecuta CADA HORA en el minuto 0 (00:00, 01:00, etc.)
-    - cron: '0 * * * *'
+    - cron: '0 * * * *' # Ejecutar cada hora
   workflow_dispatch:
 
 jobs:
@@ -20,52 +19,90 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: FAA OFICIAL (SE EJECUTA CADA HORA)
-      # Solución Híbrida: Obtiene Cookies de sesión primero, luego pide JSON.
+      # 1. NOTAMS: ESTRATEGIA PILOTWEB (LEGACY)
+      # Conectamos directo al sistema antiguo que no tiene bloqueos complejos.
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (FAA Official)
+      - name: Descargar NOTAMs (Legacy PilotWeb)
         run: |
-          echo "1. Inicializando sesión (obteniendo JSESSIONID)..."
+          echo "1. Descargando HTML de PilotWeb..."
           
-          # Paso A: Obtener cookies de la home.
-          # -L: Seguir redirecciones
-          # -c/-b: Guardar y usar cookies.txt
-          curl -s -L -c cookies.txt -b cookies.txt \
-               -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36" \
-               "https://notams.aim.faa.gov/notamSearch/" > /dev/null
+          # URL directa que genera el reporte para MSLP
+          # Usamos -L para seguir redirecciones y un User-Agent genérico
+          curl -s -L -A "Mozilla/5.0" \
+            "https://pilotweb.nas.faa.gov/PilotWeb/notamRetrievalByICAOAction.do?method=displayByICAOs&reportType=REPORT&actionType=notamRetrievalByICAOs&retrieveLocId=MSLP&formatType=ICAO" \
+            -o raw_pilotweb.html
 
-          # Pequeña pausa de seguridad
-          sleep 2
+          echo "2. Extrayendo NOTAMs y convirtiendo a JSON..."
 
-          echo "2. Consultando API con Cookies y JSON..."
-          
-          # Paso B: Petición POST con TODOS los headers de seguridad necesarios.
-          # Referer y Origin son obligatorios para evitar el error 302.
-          
-          curl -v -L -c cookies.txt -b cookies.txt \
-               -X POST "https://notams.aim.faa.gov/notamSearch/search" \
-               -H "Content-Type: application/json" \
-               -H "Accept: application/json, text/plain, */*" \
-               -H "X-Requested-With: XMLHttpRequest" \
-               -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36" \
-               -H "Referer: https://notams.aim.faa.gov/notamSearch/" \
-               -H "Origin: https://notams.aim.faa.gov" \
-               --data-raw '{"searchType":0,"designators":["MSLP"],"notamsOnly":false,"radius":"10"}' \
-               -o public/data/notams_faa.json
+          # Usamos Node.js para leer el HTML y sacar los textos limpios
+          node -e '
+            const fs = require("fs");
+            try {
+              const html = fs.readFileSync("raw_pilotweb.html", "utf8");
+              
+              // PilotWeb pone el texto del NOTAM dentro de <div class="notamText"> o similar.
+              // Pero lo más seguro es buscar el patrón de ID de NOTAM (ej: A1234/25)
+              // Regex: Busca una letra mayúscula, 4 dígitos, barra, 2 dígitos (Inicio del NOTAM)
+              // y captura hasta el siguiente salto de línea doble o fin de etiqueta.
+              
+              // Estrategia de limpieza:
+              // 1. Eliminar tags HTML
+              let cleanText = html.replace(/<[^>]*>/g, "\n");
+              // 2. Normalizar espacios
+              cleanText = cleanText.replace(/&nbsp;/g, " ").replace(/\r\n/g, "\n");
+              
+              const notams = [];
+              const lines = cleanText.split("\n");
+              
+              let buffer = "";
+              let currentId = "";
+              
+              // Leemos línea por línea para reconstruir los bloques
+              lines.forEach(line => {
+                const l = line.trim();
+                if (!l) return; // Saltar vacíos
+                
+                // Detectar inicio de NOTAM (Ej: A1459/25 NOTAMN)
+                // Regex: Letra + 4 digitos + / + 2 digitos
+                const matchId = l.match(/^([A-Z]\d{4}\/\d{2})\s+/);
+                
+                if (matchId) {
+                   // Si ya teníamos uno en buffer, lo guardamos
+                   if (currentId) {
+                     notams.push({ notamNumber: currentId, icaoMessage: buffer.trim() });
+                   }
+                   // Iniciar nuevo
+                   currentId = matchId[1];
+                   buffer = l;
+                } else if (currentId) {
+                   // Continuar acumulando líneas al NOTAM actual
+                   // Ignoramos textos de sistema como "Account..." o "End of Report"
+                   if (!l.includes("Account") && !l.includes("End of Report")) {
+                      buffer += " " + l;
+                   }
+                }
+              });
+              
+              // Guardar el último del buffer
+              if (currentId) {
+                 notams.push({ notamNumber: currentId, icaoMessage: buffer.trim() });
+              }
 
-          echo "3. Procesando resultados..."
+              // Guardar JSON final compatible con tu app
+              const output = { notamList: notams };
+              fs.writeFileSync("public/data/notams.json", JSON.stringify(output, null, 2));
+              
+              console.log("✅ Se extrajeron " + notams.length + " NOTAMs.");
+              
+            } catch (e) {
+              console.error("Error en parsing:", e);
+              // Generar array vacío en caso de error para no romper la web
+              fs.writeFileSync("public/data/notams.json", JSON.stringify({ notamList: [] }));
+            }
+          '
 
-          if [ -s public/data/notams_faa.json ]; then
-             echo "✅ Respuesta recibida. Tamaño: $(ls -lh public/data/notams_faa.json | awk '{print $5}')"
-             mv public/data/notams_faa.json public/data/notams.json
-             echo "Muestra de datos (primeros caracteres):"
-             head -c 300 public/data/notams.json
-          else
-             echo "❌ Error: El servidor no devolvió datos."
-             # Generar JSON vacío para no romper la web si falla
-             echo '{ "notamList": [] }' > public/data/notams.json
-             # No hacemos exit 1 para permitir que el TAF se actualice si es la hora.
-          fi
+          echo "Vista previa:"
+          head -n 20 public/data/notams.json
 
       # ------------------------------------------------------------------
       # 2. TAF y EXCEL: SOLO A LAS 05:00 UTC (O MANUAL)
@@ -74,47 +111,36 @@ jobs:
         run: |
           CURRENT_HOUR=$(date -u +%H)
           
-          # Si es la hora 05 o si se ejecutó manualmente con el botón
           if [ "$CURRENT_HOUR" == "05" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Actualizando TAF y Excel..."
             
-            echo "Es la hora programada (05 UTC) o ejecución manual. Actualizando TAF y Excel..."
-            
-            # --- TAF ---
+            # TAF
             curl -s "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/MSLP.TXT" -o tmp_taf.txt
             taf_block=$(awk '/^TAF MSLP/{flag=1} flag{print} /^$/{if(flag){exit}}' tmp_taf.txt)
-            
             if echo "$taf_block" | head -1 | grep -qE "03[0-5][0-9]Z"; then
               echo "$taf_block" > public/data/taf-today.txt
-              echo "✅ TAF de 03Z capturado."
             else
               echo "NIL" > public/data/taf-today.txt
-              echo "⚠️ No se encontró TAF 03Z, se puso NIL."
             fi
 
-            # --- EXCEL ---
+            # EXCEL
             file_id="1VCS87YR2-O4tJLaJJMVAZtBTPYEQG9fQ"
             curl -L "https://drive.google.com/uc?export=download&id=${file_id}" -o public/operaciones.xlsx
-            echo "✅ Excel descargado."
-
           else
-            echo "⏳ Son las $CURRENT_HOUR UTC. Se salta la actualización de TAF/Excel (Solo a las 05 UTC)."
+            echo "Se salta la actualización de TAF/Excel (Solo 05 UTC)."
           fi
 
       # ------------------------------------------------------------------
-      # 3. GUARDAR CAMBIOS EN EL REPO
+      # 3. GUARDAR CAMBIOS
       # ------------------------------------------------------------------
-      - name: Configurar Git
+      - name: Configurar Git y Guardar
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Commit y Push cambios
-        run: |
-          # Agregamos los 3 archivos posibles (si no cambiaron, git los ignora)
           git add public/data/taf-today.txt public/operaciones.xlsx public/data/notams.json || true
           
           if git diff --cached --quiet; then
-            echo "No hay cambios nuevos para guardar."
+            echo "No hay cambios."
           else
             git commit -m "Auto-update data $(date -u '+%H:%M UTC')"
             git push origin main
