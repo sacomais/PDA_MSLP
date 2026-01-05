@@ -21,55 +21,48 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # NOTAMS: PLAN B (Web Scraping Robusto con Node.js)
+      # NOTAMS: FAA OFICIAL (Con manejo de Sesión/Cookies)
       # ------------------------------------------------------------------
-      - name: Descargar y Procesar NOTAMs
+      - name: Descargar NOTAMs (FAA Session Fix)
         run: |
-          echo "1. Descargando HTML de fuente pública..."
-          # Descargamos la web de Fallston Group que muestra los NOTAMs de MSLP limpios
-          curl -s "https://www.fallston-group.com/notam-result.php?icao=MSLP" -o raw_notams.html
-
-          echo "2. Convirtiendo HTML a JSON..."
+          echo "1. Inicializando sesión con la FAA..."
           
-          # Usamos un pequeño script de Node.js (ya instalado en GitHub Actions)
-          # para extraer el texto dentro de las etiquetas <pre> y crear el JSON.
-          
-          node -e '
-            const fs = require("fs");
-            try {
-              // Leer el HTML descargado
-              const html = fs.readFileSync("raw_notams.html", "utf8");
-              
-              // Buscar todo lo que esté entre etiquetas <pre>...</pre>
-              const regex = /<pre>([\s\S]*?)<\/pre>/g;
-              let match;
-              const notams = [];
-              
-              while ((match = regex.exec(html)) !== null) {
-                // Limpiar espacios extra y saltos de línea raros
-                let text = match[1].trim();
-                if (text.length > 5) { // Ignorar vacíos
-                   // Creamos el objeto con la clave "icaoMessage" que espera tu JS
-                   notams.push({ 
-                     icaoMessage: text,
-                     startDate: new Date().toISOString() // Fecha dummy para que aparezca arriba
-                   });
-                }
-              }
-              
-              // Guardar el JSON final
-              const output = { notamList: notams };
-              fs.writeFileSync("public/data/notams.json", JSON.stringify(output, null, 2));
-              console.log("JSON generado con " + notams.length + " NOTAMs.");
-              
-            } catch (e) {
-              console.error("Error procesando:", e);
-              process.exit(1);
-            }
-          '
+          # Paso A: Visitamos la home para obtener la cookie JSESSIONID
+          # Guardamos las "llaves" en cookies.txt
+          curl -s -c cookies.txt -b cookies.txt \
+               -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36" \
+               "https://notams.aim.faa.gov/notamSearch/" > /dev/null
 
-          echo "Vista previa del JSON:"
-          head -n 15 public/data/notams.json
+          echo "2. Consultando base de datos..."
+          
+          # Paso B: Hacemos la búsqueda usando las cookies del Paso A.
+          # Esto evita el error 302 (Redirección).
+          curl -s -c cookies.txt -b cookies.txt \
+               -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36" \
+               -X POST "https://notams.aim.faa.gov/notamSearch/search" \
+               -H "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" \
+               -H "Accept: application/json, text/javascript, */*; q=0.01" \
+               -H "X-Requested-With: XMLHttpRequest" \
+               -d "searchType=0&designatorsForMessage=false&designators=MSLP&notamsOnly=false&radius=10" \
+               -o public/data/notams_faa.json
+
+          echo "3. Procesando respuesta..."
+
+          # Verificamos si descargó algo válido
+          if [ -s public/data/notams_faa.json ]; then
+            
+            # Movemos el archivo a la ruta final
+            mv public/data/notams_faa.json public/data/notams.json
+            
+            echo "✅ NOTAMs oficiales descargados correctamente."
+            echo "Vista previa:"
+            head -c 200 public/data/notams.json
+            
+          else
+            echo "❌ Error: No se pudo conectar con la FAA. Se generará lista vacía."
+            echo '{ "notamList": [] }' > public/data/notams.json
+            # No hacemos exit 1 para que el resto del workflow (TAF/Excel) no se cancele.
+          fi
 
       # ------------------------------------------------------------------
       # 2. TAF y EXCEL: Solo a las 05:00 UTC (o si es manual)
