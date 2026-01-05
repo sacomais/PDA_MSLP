@@ -41,6 +41,14 @@ jobs:
           file_id="1VCS87YR2-O4tJLaJJMVAZtBTPYEQG9fQ"
           curl -L "https://drive.google.com/uc?export=download&id=${file_id}" -o public/operaciones.xlsx
 
+      - name: Descargar NOTAMs (JSON)
+        run: |
+          # Descarga los NOTAMs de MSLP en formato JSON
+          curl -s "https://api.aviationapi.com/v1/notams?apt=MSLP" -o public/data/notams.json
+          
+          echo "NOTAMs descargados. Vista previa:"
+          head -n 5 public/data/notams.json
+      
       - name: Configurar Git
         run: |
           git config user.name "github-actions[bot]"
@@ -48,7 +56,7 @@ jobs:
 
       - name: Commit y Push cambios
         run: |
-          git add public/data/taf-today.txt public/operaciones.xlsx || true
+          git add public/data/taf-today.txt public/operaciones.xlsx public/data/notams.json || true
           if git diff --cached --quiet; then
             echo "No hay cambios para commitear."
           else
