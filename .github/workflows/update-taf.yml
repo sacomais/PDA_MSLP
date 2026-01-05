@@ -19,10 +19,10 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: SELENIUM VISUAL TEXT EXTRACTOR (PLAN FINAL)
-      # Estrategia: "Ctrl+A, Ctrl+C" del texto visible en PilotWeb
+      # 1. NOTAMS: SELENIUM CON "CLICK" DE ACEPTACIÓN
+      # Solución: Aceptamos el Disclaimer antes de buscar.
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (Visual Extractor)
+      - name: Descargar NOTAMs (Selenium Bypass)
         run: |
           pip install selenium webdriver-manager
 
@@ -30,12 +30,14 @@ jobs:
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
           from selenium.webdriver.common.by import By
+          from selenium.webdriver.support.ui import WebDriverWait
+          from selenium.webdriver.support import expected_conditions as EC
           import json
           import re
           import time
           import sys
 
-          # Configurar Chrome
+          # Configurar Chrome Headless
           options = Options()
           options.add_argument("--headless")
           options.add_argument("--no-sandbox")
@@ -45,60 +47,69 @@ jobs:
           driver = webdriver.Chrome(options=options)
 
           try:
-              # URL Directa de PilotWeb para MSLP
-              url = "https://pilotweb.nas.faa.gov/PilotWeb/notamRetrievalByICAOAction.do?method=displayByICAOs&reportType=REPORT&actionType=notamRetrievalByICAOs&retrieveLocId=MSLP&formatType=ICAO"
+              # PASO 1: Ir a la portada para ver el Disclaimer
+              print("1. Accediendo a portada PilotWeb...")
+              driver.get("https://pilotweb.nas.faa.gov/PilotWeb/")
               
-              print(f"1. Accediendo a: {url}")
-              driver.get(url)
-              time.sleep(5) # Esperar renderizado completo
+              # PASO 2: Buscar y clickear el enlace de aceptación
+              # El texto suele ser "I've read and understood..."
+              print("2. Buscando enlace de aceptación...")
+              wait = WebDriverWait(driver, 10)
+              agree_link = wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "read and understood")))
+              agree_link.click()
+              
+              print("   ✅ Disclaimer aceptado. Sesión iniciada.")
+              time.sleep(2) # Esperar a que la cookie se asiente
 
-              # ESTRATEGIA: Obtener el TEXTO PURO (Lo que ve el usuario)
-              # Evitamos parsear HTML sucio.
+              # PASO 3: Ahora sí, ir a la URL de MSLP
+              target_url = "https://pilotweb.nas.faa.gov/PilotWeb/notamRetrievalByICAOAction.do?method=displayByICAOs&reportType=REPORT&actionType=notamRetrievalByICAOs&retrieveLocId=MSLP&formatType=ICAO"
+              print(f"3. Navegando a resultados MSLP...")
+              driver.get(target_url)
+              
+              # Esperar a que cargue el texto del reporte
+              time.sleep(3)
+
+              # PASO 4: Extraer texto visual
               body_text = driver.find_element(By.TAG_NAME, "body").text
-              
-              print("2. Texto visual extraído. Analizando...")
-              
-              # Depuración: Mostrar primeros caracteres para asegurar que cargó
-              print(f"--- INICIO TEXTO VISUAL ---\n{body_text[:500]}\n--- FIN PREVIEW ---")
+              print("4. Texto extraído. Procesando...")
 
-              # Expresión Regular Agresiva
-              # Busca: Letra(A) + 4 Digitos + / + 2 Digitos
-              # Ej: A0459/25
-              # Captura todo hasta el siguiente salto de línea doble o fin de patrón
-              
-              # Dividimos el texto en bloques usando el ID del NOTAM como separador
-              # El (?=...) es un "lookahead" para no consumir el siguiente ID
+              # Debug: Imprimir un poco para ver si ya no es el disclaimer
+              print(f"--- PREVIEW ---\n{body_text[:200]}...\n--- FIN PREVIEW ---")
+
+              # Regex para cortar los NOTAMs (Axxxx/xx)
+              # Usamos split para separar por el ID del NOTAM
               chunks = re.split(r'(?=[A-Z]\d{4}/\d{2})', body_text)
 
               notams_list = []
               
               for chunk in chunks:
                   chunk = chunk.strip()
-                  # Verificar si el chunk empieza con un ID válido (Ej: A0123/25)
-                  match_id = re.match(r'^([A-Z]\d{4}/\d{2})', chunk)
+                  # Verificar si empieza con ID válido
+                  match = re.match(r'^([A-Z]\d{4}/\d{2})', chunk)
                   
-                  if match_id:
-                      nid = match_id.group(1)
-                      # Limpieza: Quitar saltos de linea excesivos
-                      message = chunk.replace('\n', ' ').strip()
+                  if match:
+                      nid = match.group(1)
+                      # Limpieza: quitar saltos de línea raros
+                      clean_msg = chunk.replace('\n', ' ').strip()
                       
-                      # Filtro: Ignorar si es solo el ID o basura
-                      if len(message) > 15:
+                      # Filtro simple para evitar basura
+                      if len(clean_msg) > 15:
                           notams_list.append({
                               "notamNumber": nid,
-                              "icaoMessage": message,
-                              "startDate": "2025-01-01T00:00:00Z" # Fecha genérica
+                              "icaoMessage": clean_msg,
+                              "startDate": "2025-01-01T00:00:00Z" 
                           })
 
-              print(f"✅ ÉXITO: Se procesaron {len(notams_list)} NOTAMs.")
+              print(f"✅ ÉXITO: Se encontraron {len(notams_list)} NOTAMs.")
 
-              # Guardar JSON
               output = { "notamList": notams_list }
               with open('public/data/notams.json', 'w') as f:
                   json.dump(output, f, indent=2)
 
           except Exception as e:
-              print(f"❌ Error crítico: {e}")
+              print(f"❌ Error: {e}")
+              # Snapshot del error (opcional, ayuda a debuggear)
+              # print(driver.page_source[:500]) 
               with open('public/data/notams.json', 'w') as f:
                   json.dump({"notamList": []}, f)
               sys.exit(1)
@@ -108,7 +119,7 @@ jobs:
 
           python scrape_notams.py
           
-          echo "Vista previa:"
+          echo "Vista previa JSON:"
           head -n 20 public/data/notams.json
 
       # ------------------------------------------------------------------
