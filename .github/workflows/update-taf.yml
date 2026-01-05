@@ -21,39 +21,45 @@ jobs:
         run: mkdir -p public/data
 
      # ------------------------------------------------------------------
-      # NOTAMS: FAA OFICIAL (Corrección JSON Payload)
+      # NOTAMS: FAA OFICIAL (SOLUCIÓN HÍBRIDA: SESIÓN + JSON)
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (JSON Mode)
+      - name: Descargar NOTAMs (Hybrid Fix)
         run: |
-          echo "Consultando API de la FAA con payload JSON..."
+          echo "1. Obteniendo cookies de sesión..."
           
-          # 1. Definimos el payload exacto que usa la web oficial
-          # 'designators' debe ser un array, no un string simple.
+          # Paso A: Visitamos la home para obtener la cookie JSESSIONID
+          # Guardamos las "llaves" en cookies.txt
+          curl -s -c cookies.txt -b cookies.txt \
+               -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36" \
+               "https://notams.aim.faa.gov/notamSearch/" > /dev/null
+
+          echo "2. Consultando API con Cookies y JSON..."
           
-          curl -v -X POST "https://notams.aim.faa.gov/notamSearch/search" \
+          # Paso B: Usamos las cookies (-b) Y enviamos JSON (--data-raw)
+          # Esto satisface ambos requisitos del servidor.
+          
+          curl -v -c cookies.txt -b cookies.txt \
+               -X POST "https://notams.aim.faa.gov/notamSearch/search" \
                -H "Content-Type: application/json" \
                -H "Accept: application/json, text/plain, */*" \
-               -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+               -H "X-Requested-With: XMLHttpRequest" \
+               -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36" \
                --data-raw '{"searchType":0,"designators":["MSLP"],"notamsOnly":false,"radius":"10"}' \
                -o public/data/notams_faa.json
 
-          echo "Código de salida: $?"
-          
-          # 2. Verificación y Procesado
+          echo "3. Verificando resultados..."
+
           if [ -s public/data/notams_faa.json ]; then
              echo "✅ Respuesta recibida. Tamaño: $(ls -lh public/data/notams_faa.json | awk '{print $5}')"
-             
-             # Movemos el archivo
              mv public/data/notams_faa.json public/data/notams.json
-             
-             # Mostramos una muestra para asegurar que no sea un array vacío []
              echo "Muestra de datos:"
              head -c 300 public/data/notams.json
           else
              echo "❌ Error: El servidor no devolvió datos."
+             # Creamos un archivo vacío válido para no romper la web
+             echo '{ "notamList": [] }' > public/data/notams.json
              exit 1
           fi
-
       # ------------------------------------------------------------------
       # 2. TAF y EXCEL: Solo a las 05:00 UTC (o si es manual)
       # ------------------------------------------------------------------
