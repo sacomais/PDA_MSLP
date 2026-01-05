@@ -19,10 +19,9 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: SELENIUM CON "CLICK" DE ACEPTACIÓN
-      # Solución: Aceptamos el Disclaimer antes de buscar.
+      # 1. NOTAMS: SELENIUM ROBUSTO (DEBUG MODE)
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (Selenium Bypass)
+      - name: Descargar NOTAMs (Selenium Debug)
         run: |
           pip install selenium webdriver-manager
 
@@ -37,9 +36,10 @@ jobs:
           import time
           import sys
 
-          # Configurar Chrome Headless
+          # Configurar Chrome Headless con ventana GRANDE
           options = Options()
           options.add_argument("--headless")
+          options.add_argument("--window-size=1920,1080") # CRÍTICO: Para ver el botón
           options.add_argument("--no-sandbox")
           options.add_argument("--disable-dev-shm-usage")
           options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -47,53 +47,55 @@ jobs:
           driver = webdriver.Chrome(options=options)
 
           try:
-              # PASO 1: Ir a la portada para ver el Disclaimer
+              # PASO 1: Portada
               print("1. Accediendo a portada PilotWeb...")
               driver.get("https://pilotweb.nas.faa.gov/PilotWeb/")
               
-              # PASO 2: Buscar y clickear el enlace de aceptación
-              # El texto suele ser "I've read and understood..."
-              print("2. Buscando enlace de aceptación...")
-              wait = WebDriverWait(driver, 10)
-              agree_link = wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "read and understood")))
-              agree_link.click()
+              # PASO 2: Aceptar Disclaimer (Estrategia Múltiple)
+              print("2. Buscando botón de aceptación...")
+              wait = WebDriverWait(driver, 15)
               
-              print("   ✅ Disclaimer aceptado. Sesión iniciada.")
-              time.sleep(2) # Esperar a que la cookie se asiente
+              try:
+                  # Intento A: Buscar por el enlace que contiene la acción 'agreeAction' (más seguro que el texto)
+                  agree_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(@href, 'agreeAction')]")))
+                  agree_btn.click()
+                  print("   ✅ Disclaimer aceptado (Método A).")
+                  
+              except Exception as e_click:
+                  print(f"   ⚠️ Método A falló. Probando búsqueda por texto... ({e_click})")
+                  # Intento B: Buscar por texto parcial "understood"
+                  agree_btn = driver.find_element(By.PARTIAL_LINK_TEXT, "understood")
+                  driver.execute_script("arguments[0].click();", agree_btn) # Click forzado JS
+                  print("   ✅ Disclaimer aceptado (Método B - JS Force).")
 
-              # PASO 3: Ahora sí, ir a la URL de MSLP
+              time.sleep(3)
+
+              # PASO 3: Ir a MSLP
               target_url = "https://pilotweb.nas.faa.gov/PilotWeb/notamRetrievalByICAOAction.do?method=displayByICAOs&reportType=REPORT&actionType=notamRetrievalByICAOs&retrieveLocId=MSLP&formatType=ICAO"
               print(f"3. Navegando a resultados MSLP...")
               driver.get(target_url)
-              
-              # Esperar a que cargue el texto del reporte
-              time.sleep(3)
+              time.sleep(5)
 
-              # PASO 4: Extraer texto visual
+              # PASO 4: Extraer texto
               body_text = driver.find_element(By.TAG_NAME, "body").text
               print("4. Texto extraído. Procesando...")
 
-              # Debug: Imprimir un poco para ver si ya no es el disclaimer
-              print(f"--- PREVIEW ---\n{body_text[:200]}...\n--- FIN PREVIEW ---")
+              # --- DEBUG: Si vemos el disclaimer de nuevo, fallamos ---
+              if "read and understood" in body_text:
+                  raise Exception("El disclaimer no se aceptó correctamente (Loop infinito).")
 
-              # Regex para cortar los NOTAMs (Axxxx/xx)
-              # Usamos split para separar por el ID del NOTAM
+              # Regex para cortar NOTAMs
               chunks = re.split(r'(?=[A-Z]\d{4}/\d{2})', body_text)
-
               notams_list = []
               
               for chunk in chunks:
                   chunk = chunk.strip()
-                  # Verificar si empieza con ID válido
                   match = re.match(r'^([A-Z]\d{4}/\d{2})', chunk)
-                  
                   if match:
                       nid = match.group(1)
-                      # Limpieza: quitar saltos de línea raros
                       clean_msg = chunk.replace('\n', ' ').strip()
-                      
-                      # Filtro simple para evitar basura
-                      if len(clean_msg) > 15:
+                      # Filtro de longitud y palabras clave de sistema
+                      if len(clean_msg) > 15 and "Account" not in nid:
                           notams_list.append({
                               "notamNumber": nid,
                               "icaoMessage": clean_msg,
@@ -107,9 +109,18 @@ jobs:
                   json.dump(output, f, indent=2)
 
           except Exception as e:
-              print(f"❌ Error: {e}")
-              # Snapshot del error (opcional, ayuda a debuggear)
-              # print(driver.page_source[:500]) 
+              print(f"❌ Error Crítico: {e}")
+              
+              # --- DEBUGGING VISUAL ---
+              print("\n--- HTML DE LA PÁGINA (Últimos 2000 carateres) ---")
+              try:
+                  src = driver.page_source
+                  print(src[-2000:]) 
+              except:
+                  print("No se pudo obtener el source.")
+              print("--------------------------------------------------\n")
+
+              # Guardar vacío para no romper workflow
               with open('public/data/notams.json', 'w') as f:
                   json.dump({"notamList": []}, f)
               sys.exit(1)
