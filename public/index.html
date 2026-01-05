@@ -34,45 +34,48 @@
         <pre id="taf-container">Cargando...</pre>
       </div>
 
-      <!--<div class="card">
-        <h3>Referencia Operativa</h3>
-        <table class="legend-table">
-          <tr>
-            <td colspan="2"><strong>DEMANDA PREVISTA</strong></td>
-          </tr>
-          <tr>
-            <td><span class="status-box" style="background:var(--color-muy-alta)"></span>MUY ALTA</td>
-            <td>&gt; Capacidad</td>
-          </tr>
-          <tr>
-            <td><span class="status-box" style="background:var(--color-alta)"></span>ALTA</td>
-            <td>80% - 100%</td>
-          </tr>
-          <tr>
-            <td><span class="status-box" style="background:var(--color-media)"></span>MEDIA</td>
-            <td>51% - 79%</td>
-          </tr>
-          <tr>
-            <td><span class="status-box" style="background:var(--color-baja)"></span>BAJA</td>
-            <td>&lt; 50%</td>
-          </tr>
-          <tr>
-            <td colspan="2"><strong>CONDICIÓN MET</strong></td>
-          </tr>
-          <tr>
-            <td><span class="status-box" style="background:var(--color-muy-alta)"></span>BAJO MINIMOS</td>
-            <td>IMC Severo</td>
-          </tr>
-          <tr>
-            <td><span class="status-box" style="background:var(--color-alta)"></span>IMC</td>
-            <td>Adversos</td>
-          </tr>
-          <tr>
-            <td><span class="status-box" style="background:var(--color-baja)"></span>VMC</td>
-            <td>CAVOK / SKC</td>
-          </tr>
-        </table>
-      </div>-->
+<div class="card">
+  <h3>Resumen Operativo por Bloques</h3>
+  <table class="blocks-table">
+    <thead>
+      <tr>
+        <th>PERÍODO</th>
+        <th>DEMANDA</th>
+        <th>PRONÓSTICO</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="period-cell">
+          <strong>MAÑANA</strong><br>
+          <span class="small-time">06:00 - 12:00</span>
+        </td>
+        <td id="demanda-manana" class="status-cell">--</td>
+        <td id="pronostico-manana" class="status-cell editable" contenteditable="true">VMC</td>
+      </tr>
+      <tr>
+        <td class="period-cell">
+          <strong>TARDE</strong><br>
+          <span class="small-time">12:00 - 18:00</span>
+        </td>
+        <td id="demanda-tarde" class="status-cell">--</td>
+        <td id="pronostico-tarde" class="status-cell editable" contenteditable="true">VMC</td>
+      </tr>
+      <tr>
+        <td class="period-cell">
+          <strong>NOCHE</strong><br>
+          <span class="small-time">18:00 - 05:00</span>
+        </td>
+        <td id="demanda-noche" class="status-cell">--</td>
+        <td id="pronostico-noche" class="status-cell editable" contenteditable="true">VMC</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="muted" style="font-size: 0.75rem; margin-top:5px;">
+    *Demanda basada en la hora pico del bloque.<br>
+    *Clic en Pronóstico para editar manual.
+  </p>
+</div>
 
       <div class="card">
         <h3>INFRAESTRUCTURA AEROPORTUARIA - CNS</h3>
@@ -119,9 +122,9 @@
         <table id="tablaDetalle">
           <thead>
             <tr>
-              <th>Aerolinea</th>
-              <th>N° Vuelo</th>
-              <th>Operación</th>
+              <th>Aero</th>
+              <th>Vuelo</th>
+              <th>Tipo</th>
               <th>Hora</th>
               <th>Origen</th>
               <th>Destino</th>
@@ -137,7 +140,7 @@
   <script>
     // Script simple para poner la fecha de hoy en el header
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-ES', options);
+    document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-ES', options).toUpperCase();
   </script>
 
   <script src="js/app.config.js"></script>
