@@ -151,6 +151,81 @@ canvas {
   max-height: 400px;
 }
 
+/* Estilos para la Tabla de Bloques */
+.blocks-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 5px;
+  font-size: 0.9rem;
+}
+
+.blocks-table th {
+  background-color: #eee;
+  padding: 8px;
+  text-align: center;
+  border: 1px solid #ccc;
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.blocks-table td {
+  border: 1px solid #ccc;
+  padding: 8px 4px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.period-cell {
+  background-color: #f9f9f9;
+  width: 35%;
+}
+
+.small-time {
+  font-size: 0.75rem;
+  color: #666;
+  display: block;
+}
+
+.status-cell {
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+/* Efecto visual al editar el pronóstico */
+.editable:focus {
+  background-color: #fffde7;
+  outline: 2px solid var(--cepa-light);
+}
+
+/* --- ESTADOS METEOROLÓGICOS (Automáticos) --- */
+.met-vmc {
+  background-color: var(--color-baja) !important; /* Verde */
+  color: white !important;
+  font-weight: bold;
+  text-align: center;
+}
+
+.met-imc {
+  background-color: var(--color-alta) !important; /* Naranja */
+  color: white !important;
+  font-weight: bold;
+  text-align: center;
+}
+
+.met-minimos {
+  background-color: var(--color-muy-alta) !important; /* Rojo */
+  color: white !important;
+  font-weight: bold;
+  text-align: center;
+  animation: alertPulse 2s infinite; /* Mantenemos el pulso solo para alerta crítica */
+}
+
+@keyframes alertPulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.85; }
+  100% { opacity: 1; }
+}
+
 /* Utilidades de color */
 .bg-red { background-color: var(--color-muy-alta); color: white; padding: 2px 6px; border-radius: 4px; }
 .bg-orange { background-color: var(--color-alta); color: white; padding: 2px 6px; border-radius: 4px; }
