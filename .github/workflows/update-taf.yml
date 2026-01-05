@@ -1,8 +1,10 @@
-name: Update TAF and XLSX
+name: Update Data (NOTAMs Hourly / TAF Daily)
 
 on:
   schedule:
-    - cron: '0 5 * * *'   # Corre todos los días a las 05:00 UTC
+    # Se ejecuta CADA HORA en el minuto 0 (00:00, 01:00, 02:00...)
+    # Si quieres cada 30 mins, usa: '*/30 * * * *'
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -18,37 +20,53 @@ jobs:
       - name: Setup folders
         run: mkdir -p public/data
 
-      - name: Descargar TAF completo (solo si es de 03Z)
+      # ------------------------------------------------------------------
+      # 1. NOTAMS: Se descargan SIEMPRE (cada hora)
+      # ------------------------------------------------------------------
+      - name: Descargar NOTAMs (Siempre)
         run: |
-          curl -s "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/MSLP.TXT" -o tmp_taf.txt
+          echo "Descargando NOTAMs mas recientes..."
+          curl -s "https://api.aviationapi.com/v1/notams?apt=MSLP" -o public/data/notams.json
 
-          # Extraer el bloque completo del último TAF
-          taf_block=$(awk '/^TAF MSLP/{flag=1} flag{print} /^$/{if(flag){exit}}' tmp_taf.txt)
+      # ------------------------------------------------------------------
+      # 2. TAF y EXCEL: Solo a las 05:00 UTC (o si es manual)
+      # ------------------------------------------------------------------
+      - name: Descargar TAF y Excel (Solo a las 05 UTC)
+        run: |
+          # Obtenemos la hora actual UTC
+          CURRENT_HOUR=$(date -u +%H)
+          
+          # Condición: Si es la hora 05 O si la ejecución fue manual (botón)
+          if [ "$CURRENT_HOUR" == "05" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            
+            echo "Es la hora programada (05 UTC) o ejecución manual. Actualizando TAF y Excel..."
+            
+            # --- BLOQUE TAF ORIGINAL ---
+            curl -s "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/MSLP.TXT" -o tmp_taf.txt
+            taf_block=$(awk '/^TAF MSLP/{flag=1} flag{print} /^$/{if(flag){exit}}' tmp_taf.txt)
+            
+            # Tu validación de 03Z
+            if echo "$taf_block" | head -1 | grep -qE "03[0-5][0-9]Z"; then
+              echo "$taf_block" > public/data/taf-today.txt
+              echo "✅ TAF de 03Z capturado correctamente"
+            else
+              # Opcional: Si prefieres no sobrescribir si falla, comenta la linea de abajo
+              echo "NIL" > public/data/taf-today.txt
+              echo "⚠️ No se encontró TAF 03Z, se puso NIL."
+            fi
 
-          # Validar si la hora de emisión está entre 0300Z y 0359Z
-          if echo "$taf_block" | head -1 | grep -qE "03[0-5][0-9]Z"; then
-            echo "$taf_block" > public/data/taf-today.txt
-            echo "✅ TAF de 03Z capturado correctamente"
+            # --- BLOQUE EXCEL ORIGINAL ---
+            file_id="1VCS87YR2-O4tJLaJJMVAZtBTPYEQG9fQ"
+            curl -L "https://drive.google.com/uc?export=download&id=${file_id}" -o public/operaciones.xlsx
+            echo "✅ Excel descargado."
+
           else
-            echo "NIL" > public/data/taf-today.txt
+            echo "⏳ Son las $CURRENT_HOUR UTC. Se salta la actualización de TAF/Excel (Programada para 05 UTC)."
           fi
 
-          echo "Contenido final de taf-today.txt:"
-          cat public/data/taf-today.txt
-
-      - name: Descargar operaciones.xlsx desde Google Drive
-        run: |
-          file_id="1VCS87YR2-O4tJLaJJMVAZtBTPYEQG9fQ"
-          curl -L "https://drive.google.com/uc?export=download&id=${file_id}" -o public/operaciones.xlsx
-
-      - name: Descargar NOTAMs (JSON)
-        run: |
-          # Descarga los NOTAMs de MSLP en formato JSON
-          curl -s "https://api.aviationapi.com/v1/notams?apt=MSLP" -o public/data/notams.json
-          
-          echo "NOTAMs descargados. Vista previa:"
-          head -n 5 public/data/notams.json
-      
+      # ------------------------------------------------------------------
+      # 3. COMMIT: Guarda lo que haya cambiado
+      # ------------------------------------------------------------------
       - name: Configurar Git
         run: |
           git config user.name "github-actions[bot]"
@@ -56,10 +74,15 @@ jobs:
 
       - name: Commit y Push cambios
         run: |
+          # Intentamos agregar todo. Git es inteligente: 
+          # si el TAF/Excel no se tocaron (porque no era la hora), no se commitean.
+          # Solo se commiteará el notams.json si cambió.
+          
           git add public/data/taf-today.txt public/operaciones.xlsx public/data/notams.json || true
+          
           if git diff --cached --quiet; then
-            echo "No hay cambios para commitear."
+            echo "No hay cambios nuevos para guardar."
           else
-            git commit -m "Update TAF and XLSX $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            git commit -m "Auto-update data $(date -u '+%H:%M UTC')"
             git push origin main
           fi
