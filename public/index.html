@@ -119,9 +119,9 @@
         <table id="tablaDetalle">
           <thead>
             <tr>
-              <th>Aero</th>
-              <th>Vuelo</th>
-              <th>Tipo</th>
+              <th>Aerolinea</th>
+              <th>N° Vuelo</th>
+              <th>Operación</th>
               <th>Hora</th>
               <th>Origen</th>
               <th>Destino</th>
@@ -137,7 +137,7 @@
   <script>
     // Script simple para poner la fecha de hoy en el header
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-ES', options).toUpperCase();
+    document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-ES', options);
   </script>
 
   <script src="js/app.config.js"></script>
