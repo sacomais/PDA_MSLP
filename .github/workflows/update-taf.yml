@@ -19,10 +19,10 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: SELENIUM (TARGET EXACT TEXT)
-      # Estrategia: Buscar la frase exacta que confirmó el usuario.
+      # 1. NOTAMS: SELENIUM EN PILOTWEB (CORREGIDO)
+      # Estrategia: Entrar a PilotWeb, buscar botón "Agree", usar URL directa.
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (Exact Match Fix)
+      - name: Descargar NOTAMs (PilotWeb Corrected)
         run: |
           pip install selenium webdriver-manager
 
@@ -52,43 +52,38 @@ jobs:
               print("1. Accediendo a portada PilotWeb...")
               driver.get("https://pilotweb.nas.faa.gov/PilotWeb/")
               
-              # PASO 2: Buscar el elemento con el texto exacto
-              print("2. Buscando elemento: I've read and understood...")
+              # PASO 2: Buscar el botón correcto ("Agree")
+              print("2. Buscando botón 'Agree'...")
               wait = WebDriverWait(driver, 15)
               
-              # XPath Poderoso: Busca CUALQUIER elemento (*) que contenga ese texto específico
-              xpath_text = "//*[contains(text(), \"I've read and understood above statements\")]"
-              
+              # XPath Robusto: Busca cualquier enlace (a) o input que contenga la palabra "Agree"
+              # Esto cubre "I Agree", "Agree", etc.
               try:
-                  element = wait.until(EC.presence_of_element_located((By.XPATH, xpath_text)))
+                  agree_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Agree')] | //input[@value='I Agree']")))
                   
-                  # Scroll para asegurar que sea visible
-                  driver.execute_script("arguments[0].scrollIntoView(true);", element)
-                  time.sleep(1)
+                  # Clic forzado con JS para asegurar
+                  driver.execute_script("arguments[0].click();", agree_btn)
+                  print("   ✅ Botón 'Agree' presionado.")
+                  time.sleep(2) # Esperar cookie
                   
-                  # CLIC FORZADO (JavaScript): Ignora si hay cosas encima
-                  driver.execute_script("arguments[0].click();", element)
-                  print("   ✅ Clic realizado exitosamente.")
-                  
-                  time.sleep(3) # Esperar a que la sesión se guarde
-                  
-              except Exception as e_click:
-                  print(f"   ⚠️ No se pudo hacer clic en el texto. Error: {e_click}")
-                  # Si falla, imprimimos el HTML para ver qué está pasando
-                  print(driver.page_source[:1000])
-                  sys.exit(1)
+              except Exception as e:
+                  print(f"   ⚠️ No se encontró botón Agree. Verificando si ya estamos dentro...")
+                  # A veces si la IP ya visitó, no pide disclaimer. Continuamos.
 
-              # PASO 3: Ir a los resultados de MSLP
-              # Usamos la URL que genera el reporte visual
+              # PASO 3: Ir a los resultados de MSLP (URL Directa)
               target_url = "https://pilotweb.nas.faa.gov/PilotWeb/notamRetrievalByICAOAction.do?method=displayByICAOs&reportType=REPORT&actionType=notamRetrievalByICAOs&retrieveLocId=MSLP&formatType=ICAO"
               
               print(f"3. Navegando a resultados MSLP...")
               driver.get(target_url)
               time.sleep(5) # Esperar renderizado
 
-              # PASO 4: Extraer Texto Visual (Como si copiaras y pegaras)
+              # PASO 4: Extraer Texto Visual
               body_text = driver.find_element(By.TAG_NAME, "body").text
               print("4. Texto extraído. Analizando...")
+              
+              # Verificar si seguimos atrapados en el disclaimer
+              if "Welcome to NOTAM Search" in body_text and "Agree" in body_text:
+                   raise Exception("El disclaimer no se pudo saltar.")
 
               # Regex para cortar NOTAMs (Axxxx/xx)
               chunks = re.split(r'(?=[A-Z]\d{4}/\d{2})', body_text)
@@ -105,8 +100,6 @@ jobs:
                       clean_msg = chunk.replace('\n', ' ').strip()
                       
                       # Filtros de calidad
-                      # 1. Longitud mínima
-                      # 2. Que no sea parte del pie de página ("Account...", "End of Report")
                       if len(clean_msg) > 15 and "Account" not in nid and "End of Report" not in nid:
                           notams_list.append({
                               "notamNumber": nid,
@@ -122,6 +115,12 @@ jobs:
 
           except Exception as e:
               print(f"❌ Error Crítico: {e}")
+              # Snapshot HTML para debug si falla
+              try:
+                print("--- DEBUG HTML ---")
+                print(driver.page_source[:500])
+              except: pass
+              
               with open('public/data/notams.json', 'w') as f:
                   json.dump({"notamList": []}, f)
               sys.exit(1)
