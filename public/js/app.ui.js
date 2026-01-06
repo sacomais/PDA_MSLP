@@ -157,34 +157,62 @@
 
   /**
    * Función principal que se llama al cargar el TAF.
-   * Analiza el texto y actualiza las celdas de Mañana, Tarde y Noche.
+   * Analiza el texto y actualiza las celdas, pintando GRIS los bloques pasados.
    */
   function actualizarPronosticoDesdeTAF() {
     const tafElement = document.getElementById('taf-container');
     if (!tafElement) return;
 
     const rawTaf = tafElement.textContent.trim().toUpperCase();
-    
-    // Si el TAF no está cargado o es nulo
     if (!rawTaf || rawTaf.includes('CARGANDO') || rawTaf.includes('NO DISPONIBLE')) return;
 
-    // 1. Calcular la severidad basada en las reglas estrictas
-    const resultado = calcularSeveridad(rawTaf);
+    // 1. Calcular la severidad del TAF actual (Verde, Naranja, Rojo)
+    const resultadoTAF = calcularSeveridad(rawTaf);
+    
+    // Guardamos estado global para usarlo en el semáforo de demanda
+    if (resultadoTAF.text === 'VMC') ESTADO_CLIMA_ACTUAL = 'VMC';
+    else if (resultadoTAF.text === 'IMC') ESTADO_CLIMA_ACTUAL = 'IMC';
+    else ESTADO_CLIMA_ACTUAL = 'MIN';
 
-    // 2. Aplicar el resultado a los 3 bloques horarios
-    // (Asumimos que si el TAF indica riesgo, aplica como alerta para la operación del día)
-    ['pronostico-manana', 'pronostico-tarde', 'pronostico-noche'].forEach(id => {
-      const celda = document.getElementById(id);
+    // 2. Obtener hora actual local (0-23)
+    const ahora = new Date();
+    const horaActual = ahora.getHours();
+
+    // 3. Definir límites de fin de cada bloque
+    // Mañana termina a las 12:00
+    // Tarde termina a las 18:00
+    // Noche termina a las 05:00 del día siguiente (siempre vigente hasta fin del día operativo)
+    
+    const bloques = [
+        { id: 'pronostico-manana', fin: 12 },
+        { id: 'pronostico-tarde',  fin: 18 },
+        { id: 'pronostico-noche',  fin: 24 } // Asumimos vigencia hasta medianoche/madrugada
+    ];
+
+    bloques.forEach(bloque => {
+      const celda = document.getElementById(bloque.id);
       if (celda) {
-        // Limpiamos clases y contenido
-        celda.className = 'status-cell'; 
-        celda.classList.add(resultado.class);
-        celda.textContent = resultado.text;
-        
-        // Bloquear edición manual
+        celda.className = 'status-cell'; // Limpiar clases previas
         celda.removeAttribute('contenteditable');
+
+        // LÓGICA DE TIEMPO:
+        // Si la hora actual es mayor o igual a la hora de fin del bloque, el bloque ya pasó.
+        if (horaActual >= bloque.fin) {
+            // Bloque Finalizado -> GRIS
+            celda.classList.add('met-finalizado');
+            celda.textContent = '---'; // O "FINALIZADO"
+        } else {
+            // Bloque Vigente o Futuro -> COLOR DEL TAF
+            celda.classList.add(resultadoTAF.class);
+            celda.textContent = resultadoTAF.text;
+        }
       }
     });
+
+    // Recalcular semáforo de demanda
+    if (window.APP_MAIN && window.APP_MAIN.procesarYRender) {
+        window.APP_MAIN.procesarYRender();
+    }
   }
 
   /**
