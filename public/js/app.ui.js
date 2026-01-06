@@ -188,21 +188,28 @@
   }
 
   /**
-   * Motor de reglas meteorológicas
+   * Motor de reglas meteorológicas (CORREGIDO)
    * Retorna el objeto de estado (MIN, IMC o VMC)
    */
-  function calcularSeveridad(taf) {
-    // Expresiones Regulares para extraer valores
+  function calcularSeveridad(tafOriginal) {
+    // 1. LIMPIEZA CRÍTICA:
+    // Eliminamos los grupos de fecha formato "0606/0706" (4 dígitos / 4 dígitos)
+    // para que no se confundan con la visibilidad en metros.
+    let taf = tafOriginal.replace(/\d{4}\/\d{4}/g, ' ');
+    
+    // También limpiamos temperaturas TX/TN (Ej: TX33/0618Z) por seguridad
+    taf = taf.replace(/T[XN]\d+\/\d+Z/g, ' ');
 
-    // 1. Visibilidad: Busca 4 dígitos (ej: 9999, 0800, 4000)
-    // Evitamos años/horas usando límites de palabra y asumiendo formato METAR/TAF
+    // Expresiones Regulares para extraer valores
+    
+    // Visibilidad: Busca 4 dígitos (ej: 9999, 0800, 4000)
     const regexVis = /\b(\d{4})\b/g;
 
-    // 2. Techo de Nubes: Busca BKN, OVC o VV seguido de 3 dígitos (ej: OVC010, BKN005)
+    // Techo de Nubes: Busca BKN, OVC o VV seguido de 3 dígitos (ej: OVC010, BKN005)
     const regexCig = /(?:BKN|OVC|VV)(\d{3})/g;
 
-    // 3. Palabras Clave Peligrosas
-    const keywordsPeligro = ['TS', 'TSRA', 'SHRA']; 
+    // Palabras Clave Peligrosas
+    const keywordsPeligro = ['TS', 'TSRA', 'SHRA', '+RA', 'FG']; 
 
     // --- REGLA 1: BAJO MÍNIMOS (ROJO) ---
     // Criterio: Vis < 800m OR Techo < 300ft (003)
@@ -211,6 +218,8 @@
     let matchVis;
     while ((matchVis = regexVis.exec(taf)) !== null) {
       const val = parseInt(matchVis[1], 10);
+      // Validamos que sea una visibilidad lógica (a veces el viento 24010KT puede confundir si no hay KT)
+      // Pero con el replace de arriba ya estamos más seguros.
       if (val < 800) return ESTADOS_MET.MIN;
     }
 
@@ -221,11 +230,10 @@
       if (altura < 3) return ESTADOS_MET.MIN; // 003 = 300ft
     }
 
-
     // --- REGLA 2: IMC (NARANJA) ---
-    // Criterio: Vis < 5000m OR Techo < 1000ft (010) OR Keywords (TS, TSRA, SHRA)
+    // Criterio: Vis < 5000m OR Techo < 1000ft (010) OR Keywords
 
-    // Resetear regex index para volver a buscar
+    // Resetear regex index
     regexVis.lastIndex = 0; 
     regexCig.lastIndex = 0;
 
@@ -245,12 +253,8 @@
     const contienePeligro = keywordsPeligro.some(kw => taf.includes(kw));
     if (contienePeligro) return ESTADOS_MET.IMC;
 
-
     // --- REGLA 3: VMC (VERDE) ---
-    // Si no cayó en ninguno de los anteriores, asumimos condiciones favorables
-    // (CAVOK, SKC, >5km, >1000ft)
     return ESTADOS_MET.VMC;
   }
-
   window.APP_UI = { poblarFiltroAerolinea, poblarFiltroHora, bindEventos, updateTotal, renderDetalle, updateBlocksSummary, actualizarPronosticoDesdeTAF };
 })();
