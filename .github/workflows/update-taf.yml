@@ -220,30 +220,50 @@ jobs:
           head -n 20 public/data/notams.json
 
       # ------------------------------------------------------------------
-      # 2. TAF y EXCEL: SOLO A LAS 05:00 UTC (O MANUAL)
+      # 2. TAF y EXCEL: ACTUALIZACIÓN HORARIA (SIEMPRE)
       # ------------------------------------------------------------------
-      - name: Descargar TAF y Excel (Condicional)
+      - name: Descargar TAF y Excel (Hourly)
         run: |
-          CURRENT_HOUR=$(date -u +%H)
-          
-          if [ "$CURRENT_HOUR" == "05" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "Actualizando TAF y Excel..."
-            
-            # TAF
-            curl -s "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/MSLP.TXT" -o tmp_taf.txt
-            taf_block=$(awk '/^TAF MSLP/{flag=1} flag{print} /^$/{if(flag){exit}}' tmp_taf.txt)
-            if echo "$taf_block" | head -1 | grep -qE "03[0-5][0-9]Z"; then
-              echo "$taf_block" > public/data/taf-today.txt
-            else
-              echo "NIL" > public/data/taf-today.txt
-            fi
+          echo "Actualizando TAF y Excel..."
 
-            # EXCEL
-            file_id="1VCS87YR2-O4tJLaJJMVAZtBTPYEQG9fQ"
-            curl -L "https://drive.google.com/uc?export=download&id=${file_id}" -o public/operaciones.xlsx
-          else
-            echo "Se salta la actualización de TAF/Excel (Solo 05 UTC)."
-          fi
+          # --- A. DESCARGA EXCEL ---
+          file_id="1VCS87YR2-O4tJLaJJMVAZtBTPYEQG9fQ"
+          curl -L "https://drive.google.com/uc?export=download&id=${file_id}" -o public/operaciones.xlsx
+          echo "✅ Excel descargado."
+
+          # --- B. DESCARGA TAF (Python) ---
+          cat <<EOF > fetch_taf.py
+          import requests
+          import sys
+          
+          url = "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/MSLP.TXT"
+          
+          try:
+              r = requests.get(url, timeout=10)
+              if r.status_code == 200:
+                  content = r.text.strip()
+                  lines = content.split('\n')
+                  
+                  # Buscamos la línea que empiece por TAF
+                  taf_line = next((line for line in lines if line.startswith("TAF")), None)
+                  
+                  if taf_line:
+                      start_idx = lines.index(taf_line)
+                      full_taf = "\n".join(lines[start_idx:])
+                      
+                      with open("public/data/taf-today.txt", "w") as f:
+                          f.write(full_taf)
+                      print(f"✅ TAF Capturado: {taf_line[:20]}...")
+                  else:
+                      print("⚠️ No se encontró etiqueta TAF.")
+                      # Si falla, no sobrescribimos con vacío para no romper el sitio
+              else:
+                  print(f"❌ Error HTTP: {r.status_code}")
+          except Exception as e:
+              print(f"❌ Error Script TAF: {e}")
+          EOF
+          
+          python fetch_taf.py
 
       # ------------------------------------------------------------------
       # 3. GUARDAR CAMBIOS
