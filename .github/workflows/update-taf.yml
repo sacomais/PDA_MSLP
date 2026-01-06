@@ -19,115 +19,183 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: SELENIUM EN PILOTWEB (CORREGIDO)
-      # Estrategia: Entrar a PilotWeb, buscar botón "Agree", usar URL directa.
+      # 1. NOTAMS: DESCARGA Y PROCESAMIENTO DE EXCEL (FAA)
+      # Estrategia: Buscar en la web oficial y descargar el reporte .xlsx
       # ------------------------------------------------------------------
-      - name: Descargar NOTAMs (PilotWeb Corrected)
+      - name: Descargar y Procesar Excel FAA
         run: |
-          pip install selenium webdriver-manager
+          # Instalamos librerías para Selenium y para leer Excel (pandas)
+          pip install selenium webdriver-manager pandas openpyxl
 
           cat <<EOF > scrape_notams.py
+          import os
+          import time
+          import json
+          import glob
+          import pandas as pd
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
           from selenium.webdriver.common.by import By
           from selenium.webdriver.support.ui import WebDriverWait
           from selenium.webdriver.support import expected_conditions as EC
-          import json
-          import re
-          import time
-          import sys
 
-          # Configurar Chrome Headless (Pantalla Grande)
+          # Configurar directorio de descarga (ruta absoluta)
+          download_dir = os.path.abspath("public/data")
+          
+          # Configurar Chrome
           options = Options()
           options.add_argument("--headless")
           options.add_argument("--window-size=1920,1080")
           options.add_argument("--no-sandbox")
           options.add_argument("--disable-dev-shm-usage")
           options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+          
+          # Preferencias para descarga automática sin preguntar
+          prefs = {
+              "download.default_directory": download_dir,
+              "download.prompt_for_download": False,
+              "download.directory_upgrade": True,
+              "safebrowsing.enabled": True
+          }
+          options.add_experimental_option("prefs", prefs)
 
           driver = webdriver.Chrome(options=options)
 
           try:
-              # PASO 1: Ir a la portada PilotWeb
-              print("1. Accediendo a portada PilotWeb...")
-              driver.get("https://pilotweb.nas.faa.gov/PilotWeb/")
+              print("1. Accediendo a FAA Search...")
+              driver.get("https://notams.aim.faa.gov/notamSearch/")
+              wait = WebDriverWait(driver, 20)
+
+              # ---------------------------------------------------------
+              # PASO A: ACEPTAR DISCLAIMER
+              # ---------------------------------------------------------
+              print("2. Buscando botón de aceptación...")
+              # XPath que busca el texto exacto que confirmaste
+              xpath_agree = "//*[contains(text(), \"read and understood\")]"
               
-              # PASO 2: Buscar el botón correcto ("Agree")
-              print("2. Buscando botón 'Agree'...")
-              wait = WebDriverWait(driver, 15)
-              
-              # XPath Robusto: Busca cualquier enlace (a) o input que contenga la palabra "Agree"
-              # Esto cubre "I Agree", "Agree", etc.
               try:
-                  agree_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Agree')] | //input[@value='I Agree']")))
-                  
-                  # Clic forzado con JS para asegurar
+                  agree_btn = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_agree)))
                   driver.execute_script("arguments[0].click();", agree_btn)
-                  print("   ✅ Botón 'Agree' presionado.")
-                  time.sleep(2) # Esperar cookie
-                  
+                  print("   ✅ Disclaimer aceptado.")
+                  time.sleep(3)
               except Exception as e:
-                  print(f"   ⚠️ No se encontró botón Agree. Verificando si ya estamos dentro...")
-                  # A veces si la IP ya visitó, no pide disclaimer. Continuamos.
+                  print(f"   ⚠️ No se pudo clickear disclaimer (quizás no apareció): {e}")
 
-              # PASO 3: Ir a los resultados de MSLP (URL Directa)
-              target_url = "https://pilotweb.nas.faa.gov/PilotWeb/notamRetrievalByICAOAction.do?method=displayByICAOs&reportType=REPORT&actionType=notamRetrievalByICAOs&retrieveLocId=MSLP&formatType=ICAO"
+              # ---------------------------------------------------------
+              # PASO B: REALIZAR BÚSQUEDA
+              # ---------------------------------------------------------
+              print("3. Buscando caja de texto para MSLP...")
+              # El ID del input suele ser 'searchDesignators' o similar. Buscamos por ID o Name.
+              # Usamos un selector CSS genérico para inputs de texto si el ID cambia
+              search_input = wait.until(EC.visibility_of_element_located((By.NAME, "designators")))
+              search_input.clear()
+              search_input.send_keys("MSLP")
               
-              print(f"3. Navegando a resultados MSLP...")
-              driver.get(target_url)
-              time.sleep(5) # Esperar renderizado
-
-              # PASO 4: Extraer Texto Visual
-              body_text = driver.find_element(By.TAG_NAME, "body").text
-              print("4. Texto extraído. Analizando...")
+              print("   Click en botón Search...")
+              # Buscamos el botón que dice "Search"
+              search_btn = driver.find_element(By.XPATH, "//button[contains(text(), 'Search')]")
+              driver.execute_script("arguments[0].click();", search_btn)
               
-              # Verificar si seguimos atrapados en el disclaimer
-              if "Welcome to NOTAM Search" in body_text and "Agree" in body_text:
-                   raise Exception("El disclaimer no se pudo saltar.")
+              # Esperar a que carguen los resultados (aparece la tabla)
+              print("   Esperando resultados...")
+              time.sleep(8) 
 
-              # Regex para cortar NOTAMs (Axxxx/xx)
-              chunks = re.split(r'(?=[A-Z]\d{4}/\d{2})', body_text)
+              # ---------------------------------------------------------
+              # PASO C: DESCARGAR EXCEL
+              # ---------------------------------------------------------
+              print("4. Buscando botón Exportar/Download...")
+              
+              # El botón suele tener un icono de Excel o decir "Export". 
+              # Probamos varios selectores comunes en esta app.
+              try:
+                  # Intento 1: Botón que dice Export
+                  export_btn = driver.find_element(By.XPATH, "//*[contains(text(), 'Export')]")
+                  driver.execute_script("arguments[0].click();", export_btn)
+                  print("   ✅ Click en Exportar (Texto).")
+              except:
+                  try:
+                      # Intento 2: Icono de Excel (xlsx)
+                      export_btn = driver.find_element(By.XPATH, "//i[contains(@class, 'fa-file-excel-o')]")
+                      driver.execute_script("arguments[0].click();", export_btn)
+                      print("   ✅ Click en Exportar (Icono).")
+                  except Exception as e:
+                      print(f"❌ No se encontró botón exportar: {e}")
+                      print(driver.page_source[:500]) # Debug
+                      raise e
+
+              # Esperar descarga
+              print("   Esperando descarga del archivo...")
+              time.sleep(10)
+
+              # ---------------------------------------------------------
+              # PASO D: PROCESAR EL ARCHIVO CON PANDAS
+              # ---------------------------------------------------------
+              print("5. Procesando archivo descargado...")
+              
+              # Buscar el archivo más reciente en la carpeta
+              list_of_files = glob.glob(os.path.join(download_dir, '*.xlsx')) # O *.csv
+              if not list_of_files:
+                  # Si no hay xlsx, buscar csv
+                  list_of_files = glob.glob(os.path.join(download_dir, '*.csv'))
+              
+              if not list_of_files:
+                  raise Exception("No se descargó ningún archivo.")
+
+              latest_file = max(list_of_files, key=os.path.getctime)
+              print(f"   Archivo encontrado: {latest_file}")
+
+              # Leer con Pandas
+              # Nota: Dependiendo del formato, puede ser read_excel o read_csv
+              if latest_file.endswith('.csv'):
+                  df = pd.read_csv(latest_file)
+              else:
+                  df = pd.read_excel(latest_file)
+
+              # Inspeccionar columnas (Normalización)
+              # La FAA suele usar nombres como "NOTAM Number", "Condition", "Start Date"
+              print(f"   Columnas encontradas: {df.columns.tolist()}")
+              
               notams_list = []
               
-              for chunk in chunks:
-                  chunk = chunk.strip()
-                  # Verificar formato ID (Letra + 4 nums + / + 2 nums)
-                  match = re.match(r'^([A-Z]\d{4}/\d{2})', chunk)
+              for index, row in df.iterrows():
+                  # Adaptamos los datos al formato JSON que espera tu App
+                  # Intentamos obtener el texto completo
                   
-                  if match:
-                      nid = match.group(1)
-                      # Limpiar saltos de línea para que quede en una sola línea
-                      clean_msg = chunk.replace('\n', ' ').strip()
+                  # Buscamos la columna que tenga el texto. Suele llamarse "NOTAM Text" o "Condition"
+                  text_col = next((c for c in df.columns if "Text" in c or "Condition" in c), None)
+                  id_col = next((c for c in df.columns if "Number" in c or "Designator" in c), None)
+                  
+                  if text_col and id_col:
+                      msg = str(row[text_col])
+                      nid = str(row[id_col])
                       
-                      # Filtros de calidad
-                      if len(clean_msg) > 15 and "Account" not in nid and "End of Report" not in nid:
-                          notams_list.append({
-                              "notamNumber": nid,
-                              "icaoMessage": clean_msg,
-                              "startDate": "2025-01-01T00:00:00Z" 
-                          })
+                      notams_list.append({
+                          "notamNumber": nid,
+                          "icaoMessage": f"{nid} {msg}", # Unimos ID y texto por si acaso
+                          "startDate": "2025-01-01T00:00:00Z" # Fecha dummy o parsear real si existe
+                      })
 
-              print(f"✅ ÉXITO: Se encontraron {len(notams_list)} NOTAMs.")
+              print(f"✅ ÉXITO: Se procesaron {len(notams_list)} NOTAMs desde Excel.")
 
+              # Guardar JSON Final
               output = { "notamList": notams_list }
               with open('public/data/notams.json', 'w') as f:
                   json.dump(output, f, indent=2)
 
+              # Limpieza: Borrar el excel descargado
+              os.remove(latest_file)
+
           except Exception as e:
               print(f"❌ Error Crítico: {e}")
-              # Snapshot HTML para debug si falla
-              try:
-                print("--- DEBUG HTML ---")
-                print(driver.page_source[:500])
-              except: pass
-              
+              # Generar vacío por seguridad
               with open('public/data/notams.json', 'w') as f:
                   json.dump({"notamList": []}, f)
-              sys.exit(1)
+              exit(1)
           finally:
               driver.quit()
           EOF
 
+          # Ejecutar script
           python scrape_notams.py
           
           echo "Vista previa JSON:"
