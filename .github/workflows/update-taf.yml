@@ -19,9 +19,10 @@ jobs:
         run: mkdir -p public/data
 
       # ------------------------------------------------------------------
-      # 1. NOTAMS: EXCEL STRATEGY (FIXED SELECTORS)
+      # 1. NOTAMS: HYBRID SCRAPER (EXCEL + TABLE FALLBACK)
+      # Estrategia: Intentar descargar Excel. Si falla, leer la tabla visualmente.
       # ------------------------------------------------------------------
-      - name: Descargar y Procesar Excel FAA
+      - name: Descargar NOTAMs (Hybrid Fail-Safe)
         run: |
           pip install selenium webdriver-manager pandas openpyxl
 
@@ -31,6 +32,7 @@ jobs:
           import json
           import glob
           import pandas as pd
+          import re
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
           from selenium.webdriver.common.by import By
@@ -38,7 +40,7 @@ jobs:
           from selenium.webdriver.support import expected_conditions as EC
           from selenium.webdriver.common.keys import Keys
 
-          # Directorio de descarga
+          # Configurar directorios
           download_dir = os.path.abspath("public/data")
           
           # Configurar Chrome
@@ -57,142 +59,129 @@ jobs:
           options.add_experimental_option("prefs", prefs)
 
           driver = webdriver.Chrome(options=options)
+          notams_list = []
 
           try:
               print("1. Accediendo a FAA Search...")
               driver.get("https://notams.aim.faa.gov/notamSearch/")
               wait = WebDriverWait(driver, 20)
 
-              # PASO A: Disclaimer
+              # --- PASO A: DISCLAIMER ---
               print("2. Aceptando Disclaimer...")
               try:
                   xpath_agree = "//*[contains(text(), \"read and understood\")]"
                   agree_btn = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_agree)))
                   driver.execute_script("arguments[0].click();", agree_btn)
                   print("   ✅ Disclaimer aceptado.")
+                  time.sleep(5) # Esperar a que cargue la UI principal
               except:
-                  print("   ⚠️ No se pidió disclaimer (o falló). Intentando seguir.")
+                  print("   ⚠️ Disclaimer no encontrado (quizás ya aceptado).")
 
-              # PAUSA CRÍTICA: Esperar a que la App Angular cargue la interfaz de búsqueda
-              print("   ⏳ Esperando carga de la interfaz (10s)...")
-              time.sleep(10)
-
-              # PASO B: Búsqueda
-              print("3. Buscando caja de texto (ID: searchDesignators)...")
+              # --- PASO B: BÚSQUEDA ---
+              print("3. Realizando búsqueda...")
               
-              # Intentamos varios selectores por si acaso
+              # Usamos el atributo 'name' que es más seguro que el ID dinámico
               try:
-                  # Selector oficial por ID
-                  search_input = wait.until(EC.element_to_be_clickable((By.ID, "searchDesignators")))
-              except:
-                  # Fallback: buscar cualquier input visible
-                  print("   ⚠️ ID no encontrado, probando selector genérico...")
-                  search_input = driver.find_element(By.XPATH, "//input[@type='text']")
-
-              search_input.clear()
-              search_input.send_keys("MSLP")
-              time.sleep(1)
-              search_input.send_keys(Keys.ENTER) # Presionar Enter directamente
-              print("   ✅ 'MSLP' enviado + Enter.")
-              
-              # Esperar resultados
-              print("   ⏳ Esperando resultados de la tabla (10s)...")
-              time.sleep(10)
-
-              # PASO C: Exportar
-              print("4. Intentando Exportar a Excel...")
-              
-              # Buscamos el botón de exportar. 
-              # A veces está dentro de un menú 'Export Options' o es un icono.
-              try:
-                  # Intento 1: Buscar botón que contenga "Export"
-                  export_btn = driver.find_element(By.XPATH, "//*[contains(text(), 'Export')]")
-                  driver.execute_script("arguments[0].click();", export_btn)
-                  
-                  # A veces abre un submenú "Excel"
+                  search_input = wait.until(EC.element_to_be_clickable((By.NAME, "designators")))
+                  search_input.clear()
+                  search_input.send_keys("MSLP")
+                  print("   ✅ Texto 'MSLP' ingresado.")
                   time.sleep(1)
-                  try:
-                      excel_opt = driver.find_element(By.XPATH, "//*[contains(text(), 'Excel')]")
-                      driver.execute_script("arguments[0].click();", excel_opt)
-                      print("   ✅ Click en Submenú Excel.")
-                  except:
-                      print("   ✅ Click en Exportar (Directo).")
-
+                  
+                  # Clic explícito en el botón SEARCH (mejor que Enter)
+                  search_btn = driver.find_element(By.XPATH, "//button[contains(text(), 'Search')]")
+                  driver.execute_script("arguments[0].click();", search_btn)
+                  print("   ✅ Botón Search presionado.")
+                  
               except Exception as e:
-                  print(f"   ⚠️ Falló selector 'Export' por texto. Probando iconos...")
-                  # Intento 2: Iconos de FontAwesome fa-file-excel-o
-                  icons = driver.find_elements(By.CSS_SELECTOR, ".fa-file-excel-o")
-                  if icons:
-                      driver.execute_script("arguments[0].click();", icons[0])
-                      print("   ✅ Click en Icono Excel.")
-                  else:
-                      print("❌ NO SE PUDO EXPORTAR. Imprimiendo HTML para debug:")
-                      print(driver.page_source[:500])
-                      raise e
+                  print(f"❌ Falló la interacción de búsqueda: {e}")
+                  raise e
 
-              # Esperar descarga
-              print("   ⏳ Esperando archivo (15s)...")
-              time.sleep(15)
+              print("   ⏳ Esperando resultados (15s)...")
+              time.sleep(15) # Dar tiempo a que la tabla cargue
 
-              # PASO D: Procesar
-              print("5. Procesando Excel...")
-              
-              # Patrón de búsqueda flexible
-              files = glob.glob(os.path.join(download_dir, "*.*"))
-              # Filtrar solo xlsx o csv recientes
-              excel_files = [f for f in files if f.endswith(".xlsx") or f.endswith(".csv")]
-              
-              if not excel_files:
-                  print("❌ No se encontró el archivo descargado. Archivos en carpeta:")
-                  print(files)
-                  raise Exception("Carpeta vacía de excels.")
-
-              latest_file = max(excel_files, key=os.path.getctime)
-              print(f"   Archivo capturado: {latest_file}")
-
-              # Leer Excel
-              if latest_file.endswith(".csv"):
-                  df = pd.read_csv(latest_file)
-              else:
-                  df = pd.read_excel(latest_file)
-              
-              # Convertir a JSON
-              notams_list = []
-              
-              # Iteramos filas. La FAA suele poner el ID en una columna y el texto en otra.
-              # Concatenamos todo lo útil de la fila.
-              for idx, row in df.iterrows():
-                  # Convertimos la fila a string para buscar patrones, es más seguro que adivinar nombres de columna
-                  row_str = str(row.values)
+              # --- PASO C: INTENTO 1 - EXCEL ---
+              print("4. Estrategia A: Intentar descargar Excel...")
+              excel_success = False
+              try:
+                  # Buscamos iconos de Excel o textos de exportar
+                  export_btn = driver.find_element(By.CSS_SELECTOR, ".fa-file-excel-o")
+                  driver.execute_script("arguments[0].click();", export_btn)
+                  print("   ✅ Botón Excel encontrado y clickeado.")
                   
-                  # Buscamos un ID de NOTAM en toda la fila (Axxxx/xx)
-                  # Esto evita que falle si cambian el nombre de la columna "Account" a "Number"
-                  import re
-                  match = re.search(r'([A-Z]\d{4}/\d{2})', str(row_str))
+                  # Esperar descarga
+                  time.sleep(10)
                   
-                  if match:
-                      nid = match.group(1)
-                      # El mensaje suele ser la celda más larga de la fila
-                      # Encontramos la celda de texto más larga
-                      msg = max([str(x) for x in row.values], key=len)
+                  # Procesar archivo
+                  files = glob.glob(os.path.join(download_dir, "*.xlsx")) + glob.glob(os.path.join(download_dir, "*.csv"))
+                  if files:
+                      latest_file = max(files, key=os.path.getctime)
+                      print(f"   📂 Archivo descargado: {latest_file}")
                       
-                      notams_list.append({
-                          "notamNumber": nid,
-                          "icaoMessage": f"{nid} {msg}",
-                          "startDate": "2025-01-01T00:00:00Z"
-                      })
+                      if latest_file.endswith(".csv"):
+                          df = pd.read_csv(latest_file)
+                      else:
+                          df = pd.read_excel(latest_file)
+                      
+                      # Convertir filas a NOTAMs
+                      for idx, row in df.iterrows():
+                          row_str = str(row.values)
+                          match = re.search(r'([A-Z]\d{4}/\d{2})', row_str)
+                          if match:
+                              nid = match.group(1)
+                              # Limpiar texto (tomamos el string más largo de la fila como el mensaje)
+                              msg = max([str(x) for x in row.values if isinstance(x, str) or not pd.isna(x)], key=len, default="")
+                              notams_list.append({
+                                  "notamNumber": nid,
+                                  "icaoMessage": f"{nid} {msg}",
+                                  "startDate": "2025-01-01T00:00:00Z"
+                              })
+                      excel_success = True
+                  else:
+                      print("   ⚠️ No se generó archivo en disco.")
+              except Exception as e:
+                  print(f"   ⚠️ Falló descarga Excel: {e}")
 
-              print(f"✅ ÉXITO: {len(notams_list)} NOTAMs extraídos.")
+              # --- PASO D: INTENTO 2 - LECTURA VISUAL (FALLBACK) ---
+              if not excel_success:
+                  print("5. Estrategia B: Lectura directa de tabla en pantalla (Fallback)...")
+                  
+                  # Buscar todas las filas de la tabla de resultados
+                  # El ID suele ser searchResultTable o grid
+                  rows = driver.find_elements(By.CSS_SELECTOR, "tr")
+                  print(f"   Filas encontradas en pantalla: {len(rows)}")
+                  
+                  for row in rows:
+                      text = row.text
+                      # Buscar patrón de NOTAM (Axxxx/xx)
+                      match = re.search(r'([A-Z]\d{4}/\d{2})', text)
+                      if match:
+                          nid = match.group(1)
+                          clean_msg = text.replace('\n', ' ').strip()
+                          
+                          # Evitar duplicados si ya existen
+                          if not any(n['notamNumber'] == nid for n in notams_list):
+                              notams_list.append({
+                                  "notamNumber": nid,
+                                  "icaoMessage": clean_msg,
+                                  "startDate": "2025-01-01T00:00:00Z"
+                              })
+
+              # --- RESULTADO FINAL ---
+              print(f"✅ FINAL: Se obtuvieron {len(notams_list)} NOTAMs.")
               
               output = { "notamList": notams_list }
               with open('public/data/notams.json', 'w') as f:
                   json.dump(output, f, indent=2)
-                  
-              # Limpieza
-              os.remove(latest_file)
 
           except Exception as e:
               print(f"❌ Error Crítico: {e}")
+              # Snapshot para debug
+              try:
+                  print("--- HTML PARCIAL ---")
+                  print(driver.page_source[:1000])
+              except: pass
+              
               with open('public/data/notams.json', 'w') as f:
                   json.dump({"notamList": []}, f)
               exit(1)
