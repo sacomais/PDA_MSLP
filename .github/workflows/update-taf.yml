@@ -220,47 +220,75 @@ jobs:
           head -n 20 public/data/notams.json
 
       # ------------------------------------------------------------------
-      # 2. TAF y EXCEL: ACTUALIZACIÓN HORARIA (SIEMPRE)
+      # 2. TAF y EXCEL: VERSIÓN BLINDADA (DEBUG + ANTI-CACHE)
       # ------------------------------------------------------------------
-      - name: Descargar TAF y Excel (Hourly)
+      - name: Descargar TAF y Excel (Debug Mode)
         run: |
-          echo "Actualizando TAF y Excel..."
+          echo "Iniciando proceso de descarga..."
 
           # --- A. DESCARGA EXCEL ---
           file_id="1VCS87YR2-O4tJLaJJMVAZtBTPYEQG9fQ"
           curl -L "https://drive.google.com/uc?export=download&id=${file_id}" -o public/operaciones.xlsx
           echo "✅ Excel descargado."
 
-          # --- B. DESCARGA TAF (Python) ---
+          # --- B. DESCARGA TAF (Script Python Mejorado) ---
           cat <<EOF > fetch_taf.py
           import requests
           import sys
+          import time
+          import random
+
+          # Truco Anti-Caché: Agregamos un timestamp a la URL
+          timestamp = int(time.time())
+          url = f"https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/MSLP.TXT?nocache={timestamp}"
           
-          url = "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/MSLP.TXT"
-          
+          print(f"Descargando desde: {url}")
+
           try:
-              r = requests.get(url, timeout=10)
+              # Timeout de 20s para evitar bloqueos
+              r = requests.get(url, timeout=20)
+              
               if r.status_code == 200:
                   content = r.text.strip()
+                  
+                  # --- DEBUG: Imprimir lo que recibimos para ver si es viejo o nuevo ---
+                  print("\n--- INICIO CONTENIDO RECIBIDO ---")
+                  print(content[:150] + "...") # Primeros caracteres
+                  print("--- FIN CONTENIDO RECIBIDO ---\n")
+                  
                   lines = content.split('\n')
                   
-                  # Buscamos la línea que empiece por TAF
-                  taf_line = next((line for line in lines if line.startswith("TAF")), None)
+                  # Búsqueda Robusta:
+                  # 1. Buscamos línea que empiece con "TAF" (ignorando espacios)
+                  taf_start_index = -1
+                  for i, line in enumerate(lines):
+                      if line.strip().startswith("TAF"):
+                          taf_start_index = i
+                          break
                   
-                  if taf_line:
-                      start_idx = lines.index(taf_line)
-                      full_taf = "\n".join(lines[start_idx:])
-                      
+                  if taf_start_index != -1:
+                      # Encontramos la cabecera TAF oficial
+                      full_taf = "\n".join(lines[taf_start_index:])
                       with open("public/data/taf-today.txt", "w") as f:
                           f.write(full_taf)
-                      print(f"✅ TAF Capturado: {taf_line[:20]}...")
+                      print(f"✅ TAF guardado (Método Estándar).")
+                      
                   else:
-                      print("⚠️ No se encontró etiqueta TAF.")
-                      # Si falla, no sobrescribimos con vacío para no romper el sitio
+                      print("⚠️ No se encontró la cabecera 'TAF' limpia.")
+                      
+                      # Plan B: Si tiene MSLP y formato de viento, lo guardamos igual
+                      if "MSLP" in content and "KT" in content:
+                          print("⚠️ Usando contenido completo como Fallback (parece válido).")
+                          with open("public/data/taf-today.txt", "w") as f:
+                              f.write(content)
+                      else:
+                          print("❌ El archivo descargado no parece un TAF válido.")
+                          # No guardamos nada para no borrar datos previos si es un error 404 disfrazado
               else:
                   print(f"❌ Error HTTP: {r.status_code}")
+                  
           except Exception as e:
-              print(f"❌ Error Script TAF: {e}")
+              print(f"❌ Error Crítico en script: {e}")
           EOF
           
           python fetch_taf.py
