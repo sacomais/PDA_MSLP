@@ -4,13 +4,13 @@
   const S = window.APP_STATE;
   const U = window.APP_UTILS;
 
+  // CONSTANTE PARA VISUALIZACIÓN
+  const NOMBRE_AEROPUERTO_DISPLAY = "SAL (EL SALVADOR)";
+
   async function cargarDatos() {
-    // Agregamos un timestamp para obligar al navegador a bajar la versión nueva
-    // y no usar la memoria caché.
     const urlNoCache = `${URL_EXCEL}?t=${new Date().getTime()}`;
   
     const resp = await fetch(urlNoCache);
-    // ... resto del código ...
     const arrayBuffer = await resp.arrayBuffer();
     const libro = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
     const hoja = libro.Sheets[libro.SheetNames[0]];
@@ -50,7 +50,7 @@
   // Aplica filtros, computa agregados y devuelve detalle base
   function computeAggregates() {
     const filtroAero = S.filters.airline;
-    const filtroTipo = S.filters.tipo; // '', 'Llegada', 'Salida'
+    const filtroTipo = S.filters.tipo;
 
     const llegadas = Array(24).fill(0);
     const salidas = Array(24).fill(0);
@@ -74,6 +74,7 @@
         const q = Math.floor(minsETA / 15);
         if (h >= 0 && h < 24) llegadas[h]++;
         if (q >= 0 && q < 96) llegadas15[q]++;
+        
         detalle.push({
           aero: U.safeStr(fila[S.idx.AERO]),
           vuelo: U.safeStr(fila[S.idx.ARRNUM]),
@@ -81,7 +82,7 @@
           hora: U.formatMinutes(minsETA),
           minutos: minsETA,
           orig: U.safeStr(fila[S.idx.ORIG]),
-          dest: BASE_AIRPORT
+          dest: NOMBRE_AEROPUERTO_DISPLAY // <--- CAMBIO AQUÍ
         });
       }
 
@@ -92,13 +93,14 @@
         const q = Math.floor(minsETD / 15);
         if (h >= 0 && h < 24) salidas[h]++;
         if (q >= 0 && q < 96) salidas15[q]++;
+        
         detalle.push({
           aero: U.safeStr(fila[S.idx.AERO]),
           vuelo: U.safeStr(fila[S.idx.DEPNUM]),
           operacion: 'Salida',
           hora: U.formatMinutes(minsETD),
           minutos: minsETD,
-          orig: BASE_AIRPORT,
+          orig: NOMBRE_AEROPUERTO_DISPLAY, // <--- CAMBIO AQUÍ
           dest: U.safeStr(fila[S.idx.DEST])
         });
       }
