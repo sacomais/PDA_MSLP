@@ -277,73 +277,64 @@ canvas {
 
 @media (max-width: 768px) {
 
-  /* 1. FORZAR ANCHO GLOBAL CON SCROLL FLUIDO */
+  /* 1. FORZAR ANCHO GLOBAL (LIENZO GRANDE) */
   body {
-    min-width: 850px; /* Ancho fijo grande */
+    min-width: 850px; /* Obliga a la página a ser ancha */
     margin: 0;
-    /* Asegura que el scroll horizontal esté activo y sea suave */
-    overflow-x: auto; 
-    -webkit-overflow-scrolling: touch;
+    overflow-x: auto; /* Permite scroll horizontal */
   }
 
-  /* 2. LAYOUT */
+  /* 2. CONTENEDOR PRINCIPAL */
   .dashboard-container {
     display: flex;
     flex-direction: column;
     width: 100%;
   }
 
-  /* 3. REORDENAMIENTO DE BLOQUES (TU PEDIDO ANTERIOR) */
-  /* Orden: 
-     1. Filtros y Gráficos (Main)
-     2. Tabla Detalle (Moveremos esto visualmente usando order en la Sidebar si fuera necesario, 
-        pero actualmente la Tabla Detalle está en Main Content.
-        El orden natural del HTML es Sidebar -> Main.
-        Aquí invertimos para ver Main primero. */
-     
+  /* 3. REORDENAMIENTO DE BLOQUES (ORDEN VISUAL) */
+  /* Main Content (Filtros, Gráficos, Detalle) va PRIMERO */
   .main-content {
     order: 1; 
     width: 100%;
     min-width: 850px;
     padding-bottom: 20px;
-    box-sizing: border-box; /* IMPORTANTE: Para que el padding no sume ancho extra */
   }
 
+  /* Sidebar (TAF, Demanda, NOTAMs) va SEGUNDO */
   .sidebar {
     order: 2; 
     width: 100%;
     min-width: 850px;
     padding-bottom: 20px;
-    box-sizing: border-box;
     
+    /* Activamos Flex para reordenar las tarjetas internas */
     display: flex;
     flex-direction: column;
   }
 
-  /* Reordenamiento interno de la Sidebar (TAF, Demanda, NOTAMs) */
-  .sidebar .card:nth-child(2) { order: 1; } /* Demanda */
-  .sidebar .card:nth-child(1) { order: 2; } /* TAF */
-  .sidebar .card:nth-child(3) { order: 3; } /* NOTAMs */
+  /* REORDENAMIENTO INTERNO SIDEBAR */
+  /* 1. Tabla Demanda/Pronóstico */
+  .sidebar .card:nth-child(2) { order: 1; margin-bottom: 20px; }
+  /* 2. TAF */
+  .sidebar .card:nth-child(1) { order: 2; margin-bottom: 20px; }
+  /* 3. NOTAMs */
+  .sidebar .card:nth-child(3) { order: 3; }
 
 
-  /* 4. SOLUCIÓN AL BORDE CORTADO (PADDING Y CAJAS) */
+  /* 4. SOLUCIÓN DEFINITIVA AL BORDE CORTADO DE LA TABLA */
   .card {
     width: 100%;
-    box-sizing: border-box; /* Clave: el padding queda DENTRO del ancho */
-    padding: 15px; /* Espacio interno para que la tabla no toque el borde */
-    margin-bottom: 15px;
+    box-sizing: border-box;
+    padding: 10px 0; /* Quitamos padding lateral de la tarjeta */
   }
 
-  /* Ajuste header tabla para que no se desborde */
-  #tablaDetalle {
-    width: 100%; 
+  /* Truco: La tabla ocupa el 96% del ancho y se centra automáticamente.
+     Esto garantiza un margen del 2% a cada lado que NADIE puede cortar. */
+  #tablaDetalle, .blocks-table {
+    width: 96% !important; 
+    margin: 0 auto !important; 
     font-size: 0.9rem;
-    border-collapse: collapse; /* Elimina espacios raros entre bordes */
-  }
-  
-  /* Asegura que las celdas no toquen el borde de la tarjeta */
-  #tablaDetalle th, #tablaDetalle td {
-    padding: 8px 10px;
+    border: 1px solid #eee; /* Borde suave para delimitar */
   }
 
 
@@ -364,7 +355,7 @@ canvas {
   .header-logos img { height: 50px; }
   .header-title h1 { font-size: 1.2rem; }
 
-  /* Controles */
+  /* Controles (Filtros) en Fila */
   .controls {
     display: flex;
     flex-direction: row;
@@ -376,7 +367,11 @@ canvas {
     border-radius: 8px;
     min-width: 850px;
     box-sizing: border-box;
+    /* Margen de seguridad también para controles */
+    width: 96%;
+    margin: 0 auto; 
   }
+  
   .controls > div { flex: 1; }
   .controls select { width: 100%; height: 40px; }
   
