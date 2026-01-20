@@ -277,102 +277,122 @@ canvas {
 
 @media (max-width: 768px) {
 
-  /* 1. FORZAR ANCHO GLOBAL (SOLUCIÓN HEADER) */
-  /* Esto obliga a TODA la página (incluido el Header fuera del dashboard)
-     a medir 850px. El celular mostrará scroll horizontal en toda la pantalla. */
+  /* 1. FORZAR ANCHO GLOBAL */
   body {
     min-width: 850px;
     margin: 0;
   }
 
-  /* 2. LAYOUT APILADO PERO ANCHO */
+  /* 2. CONTENEDOR PRINCIPAL (REORDENAMIENTO MACRO) */
   .dashboard-container {
     display: flex;
     flex-direction: column;
-    width: 100%; /* Ocupa los 850px del body */
-  }
-
-  .top-bar, .sidebar, .main-content, .card {
     width: 100%;
-    box-sizing: border-box;
   }
 
-  /* Ajustes para que el Header se vea bien en 850px */
-  .top-bar {
+  /* AQUÍ ESTÁ EL CAMBIO DE ORDEN PRINCIPAL:
+     Movemos el contenido principal (Filtros, Gráficos, Detalle) ARRIBA (Order 1)
+     y la barra lateral (TAF, Demanda, NOTAMs) ABAJO (Order 2) */
+     
+  .main-content {
+    order: 1; /* Aparece primero */
+    width: 100%;
+    min-width: 850px;
+    padding-bottom: 20px;
+  }
+
+  .sidebar {
+    order: 2; /* Aparece después */
+    width: 100%;
+    min-width: 850px;
+    padding-bottom: 20px;
+    
+    /* Convertimos la sidebar en Flex para reordenar sus tarjetas internas */
     display: flex;
-    flex-direction: row; /* Logos y título en línea si caben, o column si prefieres */
+    flex-direction: column;
+  }
+
+  /* 3. REORDENAMIENTO INTERNO DE LA SIDEBAR 
+     Originalmente el HTML es: 1. TAF, 2. Demanda, 3. NOTAMs
+     Queremos: Demanda -> TAF -> NOTAMs */
+
+  /* Tarjeta de Tabla de Demanda (es la 2da en el HTML) */
+  .sidebar .card:nth-child(2) {
+    order: 1; /* La subimos al primer lugar */
+  }
+
+  /* Tarjeta de TAF (es la 1ra en el HTML) */
+  .sidebar .card:nth-child(1) {
+    order: 2; /* La bajamos al segundo lugar */
+  }
+
+  /* Tarjeta de NOTAMs (es la 3ra en el HTML) */
+  .sidebar .card:nth-child(3) {
+    order: 3; /* Se queda al final */
+  }
+
+  /* 4. RESTO DE ESTILOS (HEADER, CONTROLES, ETC.) - Se mantienen igual */
+  
+  .top-bar {
+    width: 100%;
+    min-width: 850px;
+    display: flex;
+    flex-direction: row;
     justify-content: space-between;
     align-items: center;
     padding: 10px 20px;
     height: auto;
+    box-sizing: border-box;
   }
   
-  /* Ajustar tamaño de logos/texto en este modo "tablet falsa" */
   .header-logos img { height: 50px; }
   .header-title h1 { font-size: 1.2rem; }
 
-  /* 3. CONTROLES ALINEADOS HORIZONTALMENTE */
+  /* Controles Horizontales */
   .controls {
     display: flex;
-    flex-direction: row; /* <--- Alineación horizontal */
-    flex-wrap: nowrap;   /* Intentar no bajar de línea */
-    align-items: flex-end; /* Alinear al fondo para cuadrar con el botón */
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-end;
     gap: 15px;
     padding: 15px;
     background-color: #f4f4f4;
     border-radius: 8px;
+    min-width: 850px; /* Asegurar ancho */
+    box-sizing: border-box;
   }
 
-  /* Los selectores ocupan espacio equitativo */
-  .controls > div {
-    flex: 1; 
-  }
-  
-  .controls select {
-    width: 100%;
-    height: 40px; /* Altura uniforme */
-  }
+  .controls > div { flex: 1; }
+  .controls select { width: 100%; height: 40px; }
 
-  /* Botón Restablecer */
   #btnLimpiar {
     display: block;
-    width: auto; /* Ancho automático según el texto */
+    width: auto;
     padding: 0 20px;
-    height: 40px; /* Misma altura que los selects */
-    margin-top: 0;
-    margin-bottom: 2px; /* Ajuste fino óptico */
+    height: 40px;
+    margin-bottom: 2px;
     background-color: #002F6C;
     color: white;
     font-weight: bold;
     cursor: pointer;
-    white-space: nowrap; /* Que no se parta el texto */
+    white-space: nowrap;
   }
 
-  /* Total de Operaciones */
   #total {
     white-space: nowrap;
     font-weight: bold;
     color: var(--cepa-blue);
-    align-self: center; /* Centrado verticalmente respecto a los inputs */
-    margin-bottom: 0;
+    align-self: center;
   }
 
-  /* 4. TABLA DETALLE */
+  /* Tabla y Gráficos */
   #tablaDetalle {
-    width: 100%; /* Llena los 850px */
+    min-width: 850px;
     font-size: 0.9rem;
   }
 
-  /* 5. GRÁFICOS */
-  /* El de 15 min necesita 1200px, así que tendrá scroll interno dentro de la página de 850px */
-  .chart-body-scroll-15 {
-    min-width: 1200px; 
-  }
-  
-  /* El horario cabe bien en 850px, así que quitamos scroll forzado */
-  .chart-body-scroll-hourly {
-    min-width: 100%; /* Ocupa los 850px disponibles */
-  }
+  .chart-body-scroll-15 { min-width: 1200px; }
+  .chart-body-scroll-hourly { min-width: 100%; }
 }
 
 /* Utilidades de color */
