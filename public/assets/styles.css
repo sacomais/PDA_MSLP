@@ -258,98 +258,10 @@ canvas {
 }
 
 /* =========================================
-   DISEÑO RESPONSIVO (MOBILE)
+   DISEÑO RESPONSIVO: ESTILO "LIENZO EXPANDIDO"
    ========================================= */
 
-/* Estilos específicos para pantallas menores a 768px (Tablets y Celulares) */
-@media (max-width: 768px) {
-
-  /* 1. Cambiar el layout de dos columnas a una sola columna apilada */
-  .dashboard-container {
-    flex-direction: column; /* Apilar verticalmente */
-    height: auto; /* Quitar altura fija */
-  }
-
-  /* 2. Sidebar y Main ocupan el 100% del ancho */
-  .sidebar, .main-content {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0; /* Evita desbordamientos flex */
-    height: auto;
-    overflow-y: visible; /* Quitar scroll interno del sidebar en mobile */
-  }
-
-  /* 3. Ajustar el Header */
-  .top-bar {
-    flex-direction: column;
-    text-align: center;
-    padding: 10px;
-    height: auto;
-  }
-  
-  .header-logos img {
-    height: 40px; /* Logos más pequeños */
-    margin: 5px 0;
-  }
-  
-  .header-title h1 {
-    font-size: 1rem; /* Título más pequeño */
-  }
-
-  /* 4. Controles (Filtros) apilados */
-  .controls {
-    flex-direction: column;
-    align-items: stretch; /* Botones y selects ancho completo */
-    gap: 10px;
-  }
-  
-  .controls > div, 
-  .controls button {
-    width: 100%;
-  }
-
-  /* 5. Tablas responsive */
-  .blocks-table th, .blocks-table td {
-    padding: 5px;
-    font-size: 0.85rem;
-  }
-}
-
-/* =========================================
-   SOLUCIÓN GRÁFICOS (SCROLL HORIZONTAL)
-   ========================================= */
-
-/* Contenedor que permite el scroll */
-.chart-scroll-wrapper {
-  width: 100%;
-  overflow-x: auto; /* Activa el scroll horizontal si es necesario */
-  -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
-  padding-bottom: 10px; /* Espacio para la barra de scroll */
-}
-
-/* Cuerpo del gráfico que fuerza un ancho mínimo */
-.chart-body-scroll {
-  /* En PC se comporta normal (100%), pero en móvil fuerza 1200px */
-  width: 100%; 
-  min-height: 300px;
-}
-
-/* Solo en pantallas pequeñas, forzamos que el gráfico sea ANCHO */
-@media (max-width: 768px) {
-  .chart-body-scroll-15 {
-    min-width: 1200px; /* Forzamos que el gráfico mida 1200px de ancho */
-  }
-  
-  .chart-body-scroll-hourly {
-    min-width: 600px; /* El horario necesita menos espacio, pero algo de scroll ayuda */
-  }
-}
-
-/* =========================================
-   DISEÑO RESPONSIVO (MOBILE FIX)
-   ========================================= */
-
-/* Estilos de gráficos base (Para PC y Móvil) */
+/* Estilos base para scroll de gráficos */
 .chart-scroll-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -358,78 +270,83 @@ canvas {
 }
 
 .chart-body-scroll {
-  /* IMPORTANTE: position relative y altura fija son vitales para Chart.js */
   position: relative;
-  height: 300px; /* Altura forzada para que no desaparezca */
-  width: 100%; 
+  height: 300px;
+  width: 100%;
 }
 
-/* Solo en móviles/tablets */
 @media (max-width: 768px) {
 
-  /* 1. Layout en Columna (Apilado) */
+  /* 1. EL CONTENEDOR MAESTRO */
+  /* Usamos min-width: fit-content. Esto obliga al contenedor a ser 
+     tan ancho como su hijo más ancho (la tabla). */
   .dashboard-container {
     display: flex;
     flex-direction: column;
-    height: auto;
-    overflow: visible;
+    width: 100%;            /* Ocupa al menos la pantalla */
+    min-width: fit-content; /* CLAVE: Si hay algo más ancho, CRECE */
   }
 
-  /* 2. Sidebar y Main ocupan todo el ancho */
-  .sidebar, .main-content {
-    width: 100%;
-    min-width: 100%;
-    height: auto;
-    overflow: visible;
-    padding-bottom: 20px;
+  /* 2. HEADER Y PIEZAS SUPERIORES */
+  /* Al estar dentro del contenedor expandido, width: 100% ahora significa
+     "el ancho de la tabla", no el ancho de la pantalla del celular. */
+  .top-bar, 
+  .sidebar, 
+  .main-content,
+  .controls {
+    width: 100%;  
+    box-sizing: border-box;
   }
 
-  /* 3. Header Ajustado */
+  /* Ajustes específicos de layout para móvil */
   .top-bar {
     flex-direction: column;
     height: auto;
     padding: 10px;
   }
+  
+  .sidebar, .main-content {
+    padding-bottom: 20px;
+  }
 
-  /* 4. ARREGLO DEL BOTÓN Y CONTROLES */
+  /* 3. LA TABLA (EL "MOTOR" DEL ANCHO) */
+  /* Definimos un ancho mínimo. Esto empujará todo el diseño hacia afuera. */
+  #tablaDetalle {
+    min-width: 850px; /* Esto define el ancho total de tu página en móvil */
+  }
+
+  /* 4. CONTROLES Y BOTONES */
   .controls {
     display: flex;
-    flex-direction: column; /* Apilar controles verticalmente */
+    flex-direction: column;
     gap: 10px;
     padding: 10px;
-    background-color: #f4f4f4; /* Fondo suave para resaltar */
-    border-radius: 8px;
-  }
-
-  .controls > div {
-    width: 100%;
+    background-color: #f4f4f4;
   }
   
-  .controls select {
+  .controls select, #btnLimpiar {
     width: 100%;
-    padding: 8px;
-    font-size: 16px; /* Evita zoom automático en iPhone */
   }
 
-  /* Forzar visibilidad del botón */
   #btnLimpiar {
     display: block;
-    width: 100%;
     padding: 12px;
     margin-top: 5px;
     background-color: #002F6C;
     color: white;
     font-weight: bold;
-    cursor: pointer;
   }
 
-  /* 5. ARREGLO DE GRÁFICOS (Scroll Horizontal) */
+  /* 5. GRÁFICOS */
+  /* Se estirarán al ancho de la página (850px).
+     Si el gráfico necesita MÁS de 850px (como el de 15min), tendrá su propio scroll. */
+     
   .chart-body-scroll-15 {
-    min-width: 1000px; /* Fuerza al gráfico a ser ancho */
+    min-width: 1200px; /* 1200px > 850px, así que este tendrá scroll interno */
   }
   
   .chart-body-scroll-hourly {
-    min-width: 600px;
+    min-width: 600px; /* 600px < 850px, este se verá completo sin scroll */
   }
 }
 
