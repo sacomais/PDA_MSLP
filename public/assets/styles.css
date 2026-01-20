@@ -258,10 +258,10 @@ canvas {
 }
 
 /* =========================================
-   DISEÑO RESPONSIVO: VERSIÓN FINAL CORREGIDA
+   DISEÑO RESPONSIVO: ANCHO FIJO 850PX
    ========================================= */
 
-/* Estilos base (siempre necesarios) */
+/* Estilos base para scroll de gráficos */
 .chart-scroll-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -277,76 +277,101 @@ canvas {
 
 @media (max-width: 768px) {
 
-  /* 1. CONTENEDOR PRINCIPAL */
+  /* 1. FORZAR ANCHO GLOBAL (SOLUCIÓN HEADER) */
+  /* Esto obliga a TODA la página (incluido el Header fuera del dashboard)
+     a medir 850px. El celular mostrará scroll horizontal en toda la pantalla. */
+  body {
+    min-width: 850px;
+    margin: 0;
+  }
+
+  /* 2. LAYOUT APILADO PERO ANCHO */
   .dashboard-container {
     display: flex;
     flex-direction: column;
-    width: 100%;            
-    min-width: fit-content; /* Crece si el contenido es ancho */
-    overflow: visible;
+    width: 100%; /* Ocupa los 850px del body */
   }
 
-  /* 2. HEADER Y PIEZAS SUPERIORES - CORRECCIÓN AQUÍ */
-  /* Agregamos min-width: 850px para que coincidan con el ancho de la tabla */
-  .top-bar, 
-  .sidebar, 
-  .main-content,
-  .controls,
-  .card {
+  .top-bar, .sidebar, .main-content, .card {
     width: 100%;
-    /* CLAVE: Forzamos el mismo ancho mínimo que la tabla */
-    min-width: 850px; 
     box-sizing: border-box;
   }
 
-  /* Ajustes de layout vertical del header */
+  /* Ajustes para que el Header se vea bien en 850px */
   .top-bar {
-    flex-direction: column;
+    display: flex;
+    flex-direction: row; /* Logos y título en línea si caben, o column si prefieres */
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
     height: auto;
-    padding: 10px;
   }
   
-  .sidebar, .main-content {
-    padding-bottom: 20px;
-    flex: none;
-  }
+  /* Ajustar tamaño de logos/texto en este modo "tablet falsa" */
+  .header-logos img { height: 50px; }
+  .header-title h1 { font-size: 1.2rem; }
 
-  /* 3. LA TABLA (EL "MOTOR" DEL ANCHO) */
-  #tablaDetalle {
-    min-width: 850px; /* Esto define el ancho total de tu página */
-  }
-
-  /* 4. CONTROLES Y BOTONES */
+  /* 3. CONTROLES ALINEADOS HORIZONTALMENTE */
   .controls {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 10px;
+    flex-direction: row; /* <--- Alineación horizontal */
+    flex-wrap: nowrap;   /* Intentar no bajar de línea */
+    align-items: flex-end; /* Alinear al fondo para cuadrar con el botón */
+    gap: 15px;
+    padding: 15px;
     background-color: #f4f4f4;
-  }
-  
-  .controls select, .controls > div {
-    width: 100%;
+    border-radius: 8px;
   }
 
+  /* Los selectores ocupan espacio equitativo */
+  .controls > div {
+    flex: 1; 
+  }
+  
+  .controls select {
+    width: 100%;
+    height: 40px; /* Altura uniforme */
+  }
+
+  /* Botón Restablecer */
   #btnLimpiar {
     display: block;
-    width: 100%;
-    padding: 12px;
-    margin-top: 5px;
+    width: auto; /* Ancho automático según el texto */
+    padding: 0 20px;
+    height: 40px; /* Misma altura que los selects */
+    margin-top: 0;
+    margin-bottom: 2px; /* Ajuste fino óptico */
     background-color: #002F6C;
     color: white;
     font-weight: bold;
     cursor: pointer;
+    white-space: nowrap; /* Que no se parta el texto */
+  }
+
+  /* Total de Operaciones */
+  #total {
+    white-space: nowrap;
+    font-weight: bold;
+    color: var(--cepa-blue);
+    align-self: center; /* Centrado verticalmente respecto a los inputs */
+    margin-bottom: 0;
+  }
+
+  /* 4. TABLA DETALLE */
+  #tablaDetalle {
+    width: 100%; /* Llena los 850px */
+    font-size: 0.9rem;
   }
 
   /* 5. GRÁFICOS */
+  /* El de 15 min necesita 1200px, así que tendrá scroll interno dentro de la página de 850px */
   .chart-body-scroll-15 {
     min-width: 1200px; 
   }
   
+  /* El horario cabe bien en 850px, así que quitamos scroll forzado */
   .chart-body-scroll-hourly {
-    min-width: 600px; 
+    min-width: 100%; /* Ocupa los 850px disponibles */
   }
 }
 
