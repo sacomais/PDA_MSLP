@@ -277,62 +277,79 @@ canvas {
 
 @media (max-width: 768px) {
 
-  /* 1. FORZAR ANCHO GLOBAL */
+  /* 1. FORZAR ANCHO GLOBAL CON SCROLL FLUIDO */
   body {
-    min-width: 850px;
+    min-width: 850px; /* Ancho fijo grande */
     margin: 0;
+    /* Asegura que el scroll horizontal esté activo y sea suave */
+    overflow-x: auto; 
+    -webkit-overflow-scrolling: touch;
   }
 
-  /* 2. CONTENEDOR PRINCIPAL (REORDENAMIENTO MACRO) */
+  /* 2. LAYOUT */
   .dashboard-container {
     display: flex;
     flex-direction: column;
     width: 100%;
   }
 
-  /* AQUÍ ESTÁ EL CAMBIO DE ORDEN PRINCIPAL:
-     Movemos el contenido principal (Filtros, Gráficos, Detalle) ARRIBA (Order 1)
-     y la barra lateral (TAF, Demanda, NOTAMs) ABAJO (Order 2) */
+  /* 3. REORDENAMIENTO DE BLOQUES (TU PEDIDO ANTERIOR) */
+  /* Orden: 
+     1. Filtros y Gráficos (Main)
+     2. Tabla Detalle (Moveremos esto visualmente usando order en la Sidebar si fuera necesario, 
+        pero actualmente la Tabla Detalle está en Main Content.
+        El orden natural del HTML es Sidebar -> Main.
+        Aquí invertimos para ver Main primero. */
      
   .main-content {
-    order: 1; /* Aparece primero */
+    order: 1; 
     width: 100%;
     min-width: 850px;
     padding-bottom: 20px;
+    box-sizing: border-box; /* IMPORTANTE: Para que el padding no sume ancho extra */
   }
 
   .sidebar {
-    order: 2; /* Aparece después */
+    order: 2; 
     width: 100%;
     min-width: 850px;
     padding-bottom: 20px;
+    box-sizing: border-box;
     
-    /* Convertimos la sidebar en Flex para reordenar sus tarjetas internas */
     display: flex;
     flex-direction: column;
   }
 
-  /* 3. REORDENAMIENTO INTERNO DE LA SIDEBAR 
-     Originalmente el HTML es: 1. TAF, 2. Demanda, 3. NOTAMs
-     Queremos: Demanda -> TAF -> NOTAMs */
+  /* Reordenamiento interno de la Sidebar (TAF, Demanda, NOTAMs) */
+  .sidebar .card:nth-child(2) { order: 1; } /* Demanda */
+  .sidebar .card:nth-child(1) { order: 2; } /* TAF */
+  .sidebar .card:nth-child(3) { order: 3; } /* NOTAMs */
 
-  /* Tarjeta de Tabla de Demanda (es la 2da en el HTML) */
-  .sidebar .card:nth-child(2) {
-    order: 1; /* La subimos al primer lugar */
+
+  /* 4. SOLUCIÓN AL BORDE CORTADO (PADDING Y CAJAS) */
+  .card {
+    width: 100%;
+    box-sizing: border-box; /* Clave: el padding queda DENTRO del ancho */
+    padding: 15px; /* Espacio interno para que la tabla no toque el borde */
+    margin-bottom: 15px;
   }
 
-  /* Tarjeta de TAF (es la 1ra en el HTML) */
-  .sidebar .card:nth-child(1) {
-    order: 2; /* La bajamos al segundo lugar */
+  /* Ajuste header tabla para que no se desborde */
+  #tablaDetalle {
+    width: 100%; 
+    font-size: 0.9rem;
+    border-collapse: collapse; /* Elimina espacios raros entre bordes */
   }
-
-  /* Tarjeta de NOTAMs (es la 3ra en el HTML) */
-  .sidebar .card:nth-child(3) {
-    order: 3; /* Se queda al final */
-  }
-
-  /* 4. RESTO DE ESTILOS (HEADER, CONTROLES, ETC.) - Se mantienen igual */
   
+  /* Asegura que las celdas no toquen el borde de la tarjeta */
+  #tablaDetalle th, #tablaDetalle td {
+    padding: 8px 10px;
+  }
+
+
+  /* 5. RESTO DE ESTILOS MÓVILES */
+  
+  /* Header */
   .top-bar {
     width: 100%;
     min-width: 850px;
@@ -344,11 +361,10 @@ canvas {
     height: auto;
     box-sizing: border-box;
   }
-  
   .header-logos img { height: 50px; }
   .header-title h1 { font-size: 1.2rem; }
 
-  /* Controles Horizontales */
+  /* Controles */
   .controls {
     display: flex;
     flex-direction: row;
@@ -358,13 +374,12 @@ canvas {
     padding: 15px;
     background-color: #f4f4f4;
     border-radius: 8px;
-    min-width: 850px; /* Asegurar ancho */
+    min-width: 850px;
     box-sizing: border-box;
   }
-
   .controls > div { flex: 1; }
   .controls select { width: 100%; height: 40px; }
-
+  
   #btnLimpiar {
     display: block;
     width: auto;
@@ -377,7 +392,7 @@ canvas {
     cursor: pointer;
     white-space: nowrap;
   }
-
+  
   #total {
     white-space: nowrap;
     font-weight: bold;
@@ -385,12 +400,7 @@ canvas {
     align-self: center;
   }
 
-  /* Tabla y Gráficos */
-  #tablaDetalle {
-    min-width: 850px;
-    font-size: 0.9rem;
-  }
-
+  /* Gráficos */
   .chart-body-scroll-15 { min-width: 1200px; }
   .chart-body-scroll-hourly { min-width: 100%; }
 }
