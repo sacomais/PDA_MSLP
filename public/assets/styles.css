@@ -258,10 +258,10 @@ canvas {
 }
 
 /* =========================================
-   DISEÑO RESPONSIVO: ESTILO "LIENZO EXPANDIDO"
+   DISEÑO RESPONSIVO: VERSIÓN FINAL CORREGIDA
    ========================================= */
 
-/* Estilos base para scroll de gráficos */
+/* Estilos base (siempre necesarios) */
 .chart-scroll-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -277,28 +277,29 @@ canvas {
 
 @media (max-width: 768px) {
 
-  /* 1. EL CONTENEDOR MAESTRO */
-  /* Usamos min-width: fit-content. Esto obliga al contenedor a ser 
-     tan ancho como su hijo más ancho (la tabla). */
+  /* 1. CONTENEDOR PRINCIPAL */
   .dashboard-container {
     display: flex;
     flex-direction: column;
-    width: 100%;            /* Ocupa al menos la pantalla */
-    min-width: fit-content; /* CLAVE: Si hay algo más ancho, CRECE */
+    width: 100%;            
+    min-width: fit-content; /* Crece si el contenido es ancho */
+    overflow: visible;
   }
 
-  /* 2. HEADER Y PIEZAS SUPERIORES */
-  /* Al estar dentro del contenedor expandido, width: 100% ahora significa
-     "el ancho de la tabla", no el ancho de la pantalla del celular. */
+  /* 2. HEADER Y PIEZAS SUPERIORES - CORRECCIÓN AQUÍ */
+  /* Agregamos min-width: 850px para que coincidan con el ancho de la tabla */
   .top-bar, 
   .sidebar, 
   .main-content,
-  .controls {
-    width: 100%;  
+  .controls,
+  .card {
+    width: 100%;
+    /* CLAVE: Forzamos el mismo ancho mínimo que la tabla */
+    min-width: 850px; 
     box-sizing: border-box;
   }
 
-  /* Ajustes específicos de layout para móvil */
+  /* Ajustes de layout vertical del header */
   .top-bar {
     flex-direction: column;
     height: auto;
@@ -307,12 +308,12 @@ canvas {
   
   .sidebar, .main-content {
     padding-bottom: 20px;
+    flex: none;
   }
 
   /* 3. LA TABLA (EL "MOTOR" DEL ANCHO) */
-  /* Definimos un ancho mínimo. Esto empujará todo el diseño hacia afuera. */
   #tablaDetalle {
-    min-width: 850px; /* Esto define el ancho total de tu página en móvil */
+    min-width: 850px; /* Esto define el ancho total de tu página */
   }
 
   /* 4. CONTROLES Y BOTONES */
@@ -324,29 +325,28 @@ canvas {
     background-color: #f4f4f4;
   }
   
-  .controls select, #btnLimpiar {
+  .controls select, .controls > div {
     width: 100%;
   }
 
   #btnLimpiar {
     display: block;
+    width: 100%;
     padding: 12px;
     margin-top: 5px;
     background-color: #002F6C;
     color: white;
     font-weight: bold;
+    cursor: pointer;
   }
 
   /* 5. GRÁFICOS */
-  /* Se estirarán al ancho de la página (850px).
-     Si el gráfico necesita MÁS de 850px (como el de 15min), tendrá su propio scroll. */
-     
   .chart-body-scroll-15 {
-    min-width: 1200px; /* 1200px > 850px, así que este tendrá scroll interno */
+    min-width: 1200px; 
   }
   
   .chart-body-scroll-hourly {
-    min-width: 600px; /* 600px < 850px, este se verá completo sin scroll */
+    min-width: 600px; 
   }
 }
 
