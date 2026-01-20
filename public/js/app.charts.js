@@ -44,7 +44,7 @@
   };
 
   function buildHourlyChart(llegadas, salidas) {
-    const etiquetasHora = Array.from({ length: 24 }, (_, h) => `${U.pad2(h)}:00`);
+    const etiquetasHora = Array.from({ length: 24 }, (_, h) => U.pad2(h));
     const ctx = document.getElementById('grafico').getContext('2d');
 
     if (S.charts.hourly) S.charts.hourly.destroy();
