@@ -77,6 +77,7 @@
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         scales: {
           x: { stacked: true, grid: { display: false } },
           y: { display: false, stacked: true, grid: { display: false } }
@@ -137,6 +138,7 @@
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         scales: {
           x: { stacked: true, grid: { display: false }, ticks: { autoSkip: false, maxRotation: 90, minRotation: 90 } },
           y: { display: false, stacked: true, grid: { display: false } }
