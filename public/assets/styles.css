@@ -345,6 +345,94 @@ canvas {
   }
 }
 
+/* =========================================
+   DISEÑO RESPONSIVO (MOBILE FIX)
+   ========================================= */
+
+/* Estilos de gráficos base (Para PC y Móvil) */
+.chart-scroll-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 10px;
+}
+
+.chart-body-scroll {
+  /* IMPORTANTE: position relative y altura fija son vitales para Chart.js */
+  position: relative;
+  height: 300px; /* Altura forzada para que no desaparezca */
+  width: 100%; 
+}
+
+/* Solo en móviles/tablets */
+@media (max-width: 768px) {
+
+  /* 1. Layout en Columna (Apilado) */
+  .dashboard-container {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* 2. Sidebar y Main ocupan todo el ancho */
+  .sidebar, .main-content {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    overflow: visible;
+    padding-bottom: 20px;
+  }
+
+  /* 3. Header Ajustado */
+  .top-bar {
+    flex-direction: column;
+    height: auto;
+    padding: 10px;
+  }
+
+  /* 4. ARREGLO DEL BOTÓN Y CONTROLES */
+  .controls {
+    display: flex;
+    flex-direction: column; /* Apilar controles verticalmente */
+    gap: 10px;
+    padding: 10px;
+    background-color: #f4f4f4; /* Fondo suave para resaltar */
+    border-radius: 8px;
+  }
+
+  .controls > div {
+    width: 100%;
+  }
+  
+  .controls select {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px; /* Evita zoom automático en iPhone */
+  }
+
+  /* Forzar visibilidad del botón */
+  #btnLimpiar {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin-top: 5px;
+    background-color: #002F6C;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  /* 5. ARREGLO DE GRÁFICOS (Scroll Horizontal) */
+  .chart-body-scroll-15 {
+    min-width: 1000px; /* Fuerza al gráfico a ser ancho */
+  }
+  
+  .chart-body-scroll-hourly {
+    min-width: 600px;
+  }
+}
+
 /* Utilidades de color */
 .bg-red { background-color: var(--color-muy-alta); color: white; padding: 2px 6px; border-radius: 4px; }
 .bg-orange { background-color: var(--color-alta); color: white; padding: 2px 6px; border-radius: 4px; }
