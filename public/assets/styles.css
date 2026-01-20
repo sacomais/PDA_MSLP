@@ -257,6 +257,94 @@ canvas {
   background-color: #eef6ff; /* Efecto hover */
 }
 
+/* =========================================
+   DISEÑO RESPONSIVO (MOBILE)
+   ========================================= */
+
+/* Estilos específicos para pantallas menores a 768px (Tablets y Celulares) */
+@media (max-width: 768px) {
+
+  /* 1. Cambiar el layout de dos columnas a una sola columna apilada */
+  .dashboard-container {
+    flex-direction: column; /* Apilar verticalmente */
+    height: auto; /* Quitar altura fija */
+  }
+
+  /* 2. Sidebar y Main ocupan el 100% del ancho */
+  .sidebar, .main-content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0; /* Evita desbordamientos flex */
+    height: auto;
+    overflow-y: visible; /* Quitar scroll interno del sidebar en mobile */
+  }
+
+  /* 3. Ajustar el Header */
+  .top-bar {
+    flex-direction: column;
+    text-align: center;
+    padding: 10px;
+    height: auto;
+  }
+  
+  .header-logos img {
+    height: 40px; /* Logos más pequeños */
+    margin: 5px 0;
+  }
+  
+  .header-title h1 {
+    font-size: 1rem; /* Título más pequeño */
+  }
+
+  /* 4. Controles (Filtros) apilados */
+  .controls {
+    flex-direction: column;
+    align-items: stretch; /* Botones y selects ancho completo */
+    gap: 10px;
+  }
+  
+  .controls > div, 
+  .controls button {
+    width: 100%;
+  }
+
+  /* 5. Tablas responsive */
+  .blocks-table th, .blocks-table td {
+    padding: 5px;
+    font-size: 0.85rem;
+  }
+}
+
+/* =========================================
+   SOLUCIÓN GRÁFICOS (SCROLL HORIZONTAL)
+   ========================================= */
+
+/* Contenedor que permite el scroll */
+.chart-scroll-wrapper {
+  width: 100%;
+  overflow-x: auto; /* Activa el scroll horizontal si es necesario */
+  -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+  padding-bottom: 10px; /* Espacio para la barra de scroll */
+}
+
+/* Cuerpo del gráfico que fuerza un ancho mínimo */
+.chart-body-scroll {
+  /* En PC se comporta normal (100%), pero en móvil fuerza 1200px */
+  width: 100%; 
+  min-height: 300px;
+}
+
+/* Solo en pantallas pequeñas, forzamos que el gráfico sea ANCHO */
+@media (max-width: 768px) {
+  .chart-body-scroll-15 {
+    min-width: 1200px; /* Forzamos que el gráfico mida 1200px de ancho */
+  }
+  
+  .chart-body-scroll-hourly {
+    min-width: 600px; /* El horario necesita menos espacio, pero algo de scroll ayuda */
+  }
+}
+
 /* Utilidades de color */
 .bg-red { background-color: var(--color-muy-alta); color: white; padding: 2px 6px; border-radius: 4px; }
 .bg-orange { background-color: var(--color-alta); color: white; padding: 2px 6px; border-radius: 4px; }
