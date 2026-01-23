@@ -220,26 +220,39 @@ jobs:
           head -n 20 public/data/notams.json
 
       # ------------------------------------------------------------------
-      # 2. TAF y EXCEL: FUENTE AWC (API MODERNA)
+      # 2. TAF (API) y EXCEL (LOCAL MENSUAL)
       # ------------------------------------------------------------------
-      - name: Descargar TAF (AviationWeather API) y Excel
+      - name: Actualizar TAF y Seleccionar Excel del Día
         run: |
-          echo "Iniciando descarga..."
+          echo "Iniciando proceso de actualización..."
 
-          # --- A. DESCARGA EXCEL ---
-          file_id="1VCS87YR2-O4tJLaJJMVAZtBTPYEQG9fQ"
-          curl -L "https://drive.google.com/uc?export=download&id=${file_id}" -o public/operaciones.xlsx
-          echo "✅ Excel descargado."
+          # --- A. GESTIÓN DEL EXCEL (LOCAL) ---
+          # 1. Configuramos la zona horaria para saber qué día es en El Salvador
+          export TZ="America/El_Salvador"
+          HOY=$(date +'%Y-%m-%d')
+          
+          echo "📅 Fecha actual en El Salvador: $HOY"
+          
+          ARCHIVO_ORIGEN="public/mensual/${HOY}.xlsx"
+          ARCHIVO_DESTINO="public/operaciones.xlsx"
 
-          # --- B. DESCARGA TAF (AWC API) ---
+          if [ -f "$ARCHIVO_ORIGEN" ]; then
+              echo "✅ Se encontró el archivo de hoy: $ARCHIVO_ORIGEN"
+              # Sobrescribimos el archivo activo con el de hoy
+              cp "$ARCHIVO_ORIGEN" "$ARCHIVO_DESTINO"
+              echo "📂 Datos actualizados correctamente en $ARCHIVO_DESTINO"
+          else
+              echo "⚠️ NO se encontró archivo para la fecha $HOY en la carpeta 'mensual'."
+              echo "🛑 Se mantienen los datos del día anterior (no se realizaron cambios en el Excel)."
+          fi
+
+          # --- B. DESCARGA TAF (AviationWeather API) ---
           cat <<EOF > fetch_taf.py
           import requests
           import sys
           import time
           
-          # Usamos la API de AviationWeather.gov
-          # format=raw nos da el texto limpio
-          # time=... ayuda a romper el caché local si hubiera
+          # Timestamp para romper caché
           timestamp = int(time.time())
           url = f"https://aviationweather.gov/api/data/taf?ids=MSLP&format=raw&date={timestamp}"
           
@@ -247,24 +260,18 @@ jobs:
 
           try:
               r = requests.get(url, timeout=20)
-              
               if r.status_code == 200:
                   content = r.text.strip()
-                  
                   if "MSLP" in content:
-                      print(f"✅ TAF Recibido: {content[:30]}...")
-                      
-                      # Guardamos el archivo
+                      print(f"✅ TAF Recibido y guardado.")
                       with open("public/data/taf-today.txt", "w") as f:
                           f.write(content)
                   else:
-                      print("⚠️ La API respondió, pero no contiene datos para MSLP (posiblemente vacío).")
-                      print(f"Respuesta: {content}")
+                      print("⚠️ API respondió vacía o sin MSLP.")
               else:
                   print(f"❌ Error API: {r.status_code}")
-                  
           except Exception as e:
-              print(f"❌ Error Crítico: {e}")
+              print(f"❌ Error Script TAF: {e}")
           EOF
           
           python fetch_taf.py
