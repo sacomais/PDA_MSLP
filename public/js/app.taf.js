@@ -1,21 +1,23 @@
 // Función para cargar el TAF de hoy
 async function loadTAF() {
   try {
-    // CAMBIO IMPORTANTE: Agregamos ?t=TIMESTAMP para evitar que el navegador use caché viejo
     const urlNoCache = `data/taf-today.txt?t=${new Date().getTime()}`;
     
     const response = await fetch(urlNoCache); 
     if (!response.ok) throw new Error('No se pudo cargar el TAF');
 
-    const tafText = await response.text();
+    let tafText = await response.text();
     
-    // Mostramos el texto crudo en la tarjeta
+    // CAMBIO: Reemplazar saltos de línea por espacios y quitar espacios dobles
+    tafText = tafText.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, " ").trim();
+    
+    // Mostramos el texto limpio
     const container = document.getElementById('taf-container');
     if (container) {
         container.textContent = tafText;
     }
 
-    // Ejecutar análisis automático de reglas en cuanto hay texto nuevo
+    // Ejecutar análisis (el analizador sigue funcionando igual aunque sea una línea)
     if (window.APP_UI && window.APP_UI.actualizarPronosticoDesdeTAF) {
       window.APP_UI.actualizarPronosticoDesdeTAF();
     }
@@ -23,7 +25,7 @@ async function loadTAF() {
     console.error(error);
     const container = document.getElementById('taf-container');
     if (container) {
-        container.textContent = 'TAF no disponible (Error de carga)';
+        container.textContent = 'TAF no disponible';
     }
   }
 }
