@@ -5,7 +5,7 @@
   const U = window.APP_UTILS;
 
   // CONSTANTE PARA VISUALIZACIÓN
-  const NOMBRE_AEROPUERTO_DISPLAY = "SAL (EL SALVADOR)";
+  const NOMBRE_AEROPUERTO_DISPLAY = "MSLP";
 
   async function cargarDatos() {
     const urlNoCache = `${URL_EXCEL}?t=${new Date().getTime()}`;
