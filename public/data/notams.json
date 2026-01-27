@@ -11,16 +11,6 @@
       "startDate": "2025-01-01T00:00:00Z"
     },
     {
-      "notamNumber": "V0237/25",
-      "icaoMessage": "MSLP V0237/25 Military 12/07/2025 0000 03/09/2026 2359 [US DOD PROCEDURAL NOTAM] INSTRUMENT APPROACH PROCEDURE NOT AUTHORIZED ILS OR LOC Y RWY 07",
-      "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "V0238/25",
-      "icaoMessage": "MSLP V0238/25 Military 12/07/2025 0000 03/09/2026 2359 [US DOD PROCEDURAL NOTAM] INSTRUMENT APPROACH PROCEDURE NOT AUTHORIZED VOR DME Z RWY 07",
-      "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
       "notamNumber": "A2880/25",
       "icaoMessage": "MSLP A2880/25 International 12/22/2025 1200 02/22/2026 1200 TWR PERSONNEL ON JOB TRAINING UNDER SUPERVISION",
       "startDate": "2025-01-01T00:00:00Z"
