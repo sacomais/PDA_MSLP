@@ -49,8 +49,8 @@
 
   // Aplica filtros, computa agregados y devuelve detalle base
   function computeAggregates() {
-    const filtroAero = S.filters.airline;
-    const filtroTipo = S.filters.tipo;
+    //const filtroAero = S.filters.airline;
+    //const filtroTipo = S.filters.tipo;
 
     // Arrays para gráficos (Se llenan con hora LOCAL, ya que app.charts.js hace el shift visual)
     const llegadas = Array(24).fill(0);
@@ -65,12 +65,12 @@
       // Filtro por aerolínea
       if (filtroAero && S.idx.AERO >= 0) {
         const val = fila[S.idx.AERO] ? String(fila[S.idx.AERO]).trim() : '';
-        if (val !== filtroAero) return;
+        //if (val !== filtroAero) return;
       }
 
       // --- PROCESAMIENTO DE LLEGADAS ---
       const minsETA = U.getMinutesFromCell(fila[S.idx.ETA]);
-      if (minsETA !== null && (filtroTipo === '' || filtroTipo === 'Llegada')) {
+      if (minsETA !== null) {
         // Agregación para gráficos (Hora Local)
         const h = Math.floor(minsETA / 60);
         const q = Math.floor(minsETA / 15);
@@ -94,7 +94,7 @@
 
       // --- PROCESAMIENTO DE SALIDAS ---
       const minsETD = U.getMinutesFromCell(fila[S.idx.ETD]);
-      if (minsETD !== null && (filtroTipo === '' || filtroTipo === 'Salida')) {
+      if (minsETD !== null) {
         // Agregación para gráficos (Hora Local)
         const h = Math.floor(minsETD / 60);
         const q = Math.floor(minsETD / 15);
