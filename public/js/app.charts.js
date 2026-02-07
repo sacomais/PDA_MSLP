@@ -183,13 +183,24 @@
         scales: {
           x: { 
             stacked: true, 
-            grid: { display: false },
+            // CAMBIO AQUÍ: Configuración de la cuadrícula inteligente
+            grid: {
+              display: true, // Activamos el grid
+              drawOnChartArea: true,
+              // Función mágica: Pinta gris cada 4 barras (cada hora), transparente el resto
+              color: (context) => {
+                 if (context.tick.value % 4 === 0) {
+                   return 'rgba(0, 0, 0, 0.2)'; // Línea gris visible
+                 }
+                 return 'transparent'; // Oculto para los 15, 30 y 45 min
+              }
+            },
             ticks: { 
               autoSkip: true,    
               maxTicksLimit: 24, 
               maxRotation: 0,    
               minRotation: 0 
-            } 
+            }
           },
           y: { display: false, stacked: true, grid: { display: false } }
         },
