@@ -382,7 +382,7 @@ canvas {
     cursor: pointer;
   }
   
-  .controls select { width: 100%; height: 40px; }
+  /* .controls select { width: 100%; height: 40px; } */
   
   #btnLimpiar {
     display: block;
