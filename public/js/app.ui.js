@@ -3,26 +3,26 @@
   const S = window.APP_STATE;
   const U = window.APP_UTILS;
 
-  function poblarFiltroAerolinea() {
-    const select = document.getElementById('filtroAerolinea');
-    const aerolineas = new Set();
-    if (S.idx.AERO >= 0) {
-      S.data.rows.forEach(fila => {
-        const val = fila[S.idx.AERO];
-        if (val !== undefined && val !== null && String(val).trim() !== '') {
-          aerolineas.add(String(val).trim());
-        }
-      });
-    }
-    select.innerHTML = `<option value="">Todas</option>` +
-      Array.from(aerolineas).sort().map(a => `<option value="${U.escapeHtml(a)}">${U.escapeHtml(a)}</option>`).join('');
-  }
+  //function poblarFiltroAerolinea() {
+    //const select = document.getElementById('filtroAerolinea');
+    //const aerolineas = new Set();
+    //if (S.idx.AERO >= 0) {
+      //S.data.rows.forEach(fila => {
+        //const val = fila[S.idx.AERO];
+        //if (val !== undefined && val !== null && String(val).trim() !== '') {
+          //aerolineas.add(String(val).trim());
+        //}
+      //});
+    //}
+    //select.innerHTML = `<option value="">Todas</option>` +
+      //Array.from(aerolineas).sort().map(a => `<option value="${U.escapeHtml(a)}">${U.escapeHtml(a)}</option>`).join('');
+  //}
 
-  function poblarFiltroHora() {
-    const select = document.getElementById('filtroHora');
-    select.innerHTML = `<option value="">Todas</option>` +
-      Array.from({ length: 24 }, (_, h) => `<option value="${h}">${U.pad2(h)}:00</option>`).join('');
-  }
+  //function poblarFiltroHora() {
+    //const select = document.getElementById('filtroHora');
+    //select.innerHTML = `<option value="">Todas</option>` +
+      //Array.from({ length: 24 }, (_, h) => `<option value="${h}">${U.pad2(h)}:00</option>`).join('');
+  //}
 
   function bindEventos() {
     const selA = document.getElementById('filtroAerolinea');
