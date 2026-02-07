@@ -25,7 +25,27 @@
   //}
 
   function bindEventos() {
-    const selA = document.getElementById('filtroAerolinea');
+    const selA = document.getElementById('filtroAerolinea');function bindEventos() {
+    const btnL = document.getElementById('btnLimpiar');
+
+    if (btnL) {
+      btnL.addEventListener('click', () => {
+        // Accedemos al estado global
+        const S = window.APP_STATE; 
+
+        // 1. Reseteamos la selección de los gráficos (barras rojas/verdes)
+        S.selectedHour = null;
+        S.selectedQuarter = null;
+
+        // 2. Reseteamos los filtros internos por seguridad
+        // (Aunque no haya selects visuales, limpiamos la memoria)
+        S.filters = { airline: '', hora: '', tipo: '' };
+
+        // 3. Renderizamos de nuevo
+        window.APP_MAIN.procesarYRender();
+      });
+    }
+  }
     const selH = document.getElementById('filtroHora');
     const selT = document.getElementById('filtroTipo');
     const btnL = document.getElementById('btnLimpiar');
