@@ -87,25 +87,16 @@
     <main class="main-content">
       
       <div class="controls">
-        <div>
-          <label>Aerolínea:</label>
-          <select id="filtroAerolinea"></select>
-        </div>
-        <div>
-          <label>Hora:</label>
-          <select id="filtroHora"></select>
-        </div>
-        <div>
-          <label>Operación:</label>
-          <select id="filtroTipo">
-            <option value="">Todas</option>
-            <option value="Llegada">Llegada</option>
-            <option value="Salida">Salida</option>
-          </select>
-        </div>
-        <button id="btnLimpiar">Restablecer</button>
-        <div id="total" style="font-weight:bold; color:var(--cepa-blue);">-- Ops</div>
+        <button id="btnLimpiar" title="Recargar datos">Restablecer</button>
+        
+        <button id="btnPDF" onclick="exportarPDF()" style="background-color: #dc3545; color: white; border: none; padding: 0 20px; font-weight: bold; cursor: pointer; border-radius: 4px;">
+          Exportar PDF
+        </button>
+      
+        <div id="total">Total de operaciones: 0</div>
       </div>
+      
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
       <div class="card">
         <h3 id="tituloGraficoHorario">Información Gráfica de Demanda Horaria</h3>
