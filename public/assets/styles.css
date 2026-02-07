@@ -359,20 +359,29 @@ canvas {
   .controls {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: flex-end;
+    flex-wrap: wrap;
+    align-items: center; /* Centrado vertical */
     gap: 15px;
     padding: 15px;
     background-color: #f4f4f4;
     border-radius: 8px;
-    min-width: 850px;
-    box-sizing: border-box;
-    /* Margen de seguridad también para controles */
     width: 96%;
-    margin: 0 auto; 
+    margin: 0 auto;
   }
   
-  .controls > div { flex: 1; }
+  .controls > div {
+    flex: none; /* Ya no crece infinitamente */
+  }
+
+  /* Estilo base para los botones */
+  .controls button {
+    height: 40px;
+    padding: 0 20px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
   .controls select { width: 100%; height: 40px; }
   
   #btnLimpiar {
