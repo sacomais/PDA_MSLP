@@ -1,11 +1,9 @@
-// js/app.ui.js
+// js/app.ui.js - VERSIÓN SEGURA
 (function () {
     const U = window.APP_UTILS;
     const S = window.APP_STATE;
   
-    // Inicializa eventos (Solo botón Restablecer y PDF)
     function bindEventos() {
-      // Botón Restablecer
       const btnLimpiar = document.getElementById('btnLimpiar');
       if (btnLimpiar) {
         btnLimpiar.addEventListener('click', () => {
@@ -16,14 +14,13 @@
         });
       }
       
-      // Botón PDF (si decidiste poner el listener aquí, aunque en main.js lo expusimos global)
       const btnPDF = document.getElementById('btnPDF');
+      // Verificamos si existe la función exportar antes de asignar
       if (btnPDF && window.exportarPDF) {
         btnPDF.addEventListener('click', window.exportarPDF);
       }
     }
   
-    // Actualiza los contadores totales
     function updateTotal(llegadas, salidas, llegadas15, salidas15) {
       const totalOps = llegadas.reduce((a, b) => a + b, 0) + salidas.reduce((a, b) => a + b, 0);
       const totalDiv = document.getElementById('total');
@@ -32,7 +29,6 @@
       }
     }
   
-    // Renderiza la tabla de detalles
     function renderDetalle(detalle) {
       const tbody = document.querySelector('#tablaDetalle tbody');
       if (!tbody) return;
@@ -52,51 +48,48 @@
       });
     }
   
-    // Actualiza el semáforo (Mañana/Tarde/Noche)
     function updateBlocksSummary(llegadas, salidas) {
-      // Definición de bloques (índices 0-23)
       const blocks = [
-        { id: 'row-manana', start: 6, end: 11 },  // 06:00 - 12:00
-        { id: 'row-tarde',  start: 12, end: 17 }, // 12:00 - 18:00
-        { id: 'row-noche',  start: 18, end: 28 }  // 18:00 - 05:00 (Manejado con lógica especial)
+        { id: 'row-manana', start: 6, end: 11 },
+        { id: 'row-tarde',  start: 12, end: 17 },
+        { id: 'row-noche',  start: 18, end: 28 } 
       ];
   
       blocks.forEach(block => {
+        // PROTECCIÓN: Si no encuentra la fila en el HTML, salta al siguiente sin romper nada
+        const row = document.getElementById(block.id);
+        if (!row) {
+            console.warn(`Advertencia: No se encontró la fila con ID '${block.id}' en el HTML.`);
+            return; 
+        }
+
         let count = 0;
-        // Sumamos operaciones en el rango
         for (let i = 0; i < 24; i++) {
-          // Lógica circular para la noche (18 a 5)
           let inRange = false;
           if (block.id === 'row-noche') {
              inRange = (i >= 18) || (i <= 5);
           } else {
              inRange = (i >= block.start && i <= block.end);
           }
-          
           if (inRange) {
             count += (llegadas[i] || 0) + (salidas[i] || 0);
           }
         }
   
-        // Determinamos color/estado
         let text = 'BAJA';
         let className = 'sem-baja';
         if (count >= 20) { text = 'MEDIA'; className = 'sem-media'; }
         if (count >= 40) { text = 'ALTA';  className = 'sem-alta'; }
   
-        // Actualizamos DOM
-        const row = document.getElementById(block.id);
-        if (row) {
-          const cellDemanda = row.querySelector('.demanda-cell');
-          if (cellDemanda) {
-            cellDemanda.textContent = text;
-            cellDemanda.className = 'demanda-cell ' + className;
-          }
+        const cellDemanda = row.querySelector('.demanda-cell');
+        if (cellDemanda) {
+          cellDemanda.textContent = text;
+          cellDemanda.className = 'demanda-cell ' + className;
         }
       });
     }
 
-    // Funciones vacías para que app.data.js no falle si intenta llamarlas
+    // Funciones vacías de compatibilidad
     function poblarFiltroAerolinea() {}
     function poblarFiltroHora() {}
   
