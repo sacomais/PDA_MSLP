@@ -2,96 +2,95 @@
     const { URL_EXCEL } = window.APP_CONFIG;
     const S = window.APP_STATE;
     const U = window.APP_UTILS;
-    const NOMBRE_AEROPUERTO_DISPLAY = "MSLP"; 
   
     async function cargarDatos() {
-      const urlNoCache = `${URL_EXCEL}?t=${new Date().getTime()}`;
       try {
-          const resp = await fetch(urlNoCache);
-          const arrayBuffer = await resp.arrayBuffer();
-          const libro = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-          const hoja = libro.Sheets[libro.SheetNames[0]];
-          const data = XLSX.utils.sheet_to_json(hoja, { header: 1, raw: true });
-          prepararDatos(data);
+        const resp = await fetch(`${URL_EXCEL}?t=${Date.now()}`);
+        const ab = await resp.arrayBuffer();
+        const wb = XLSX.read(ab, { type: 'array', cellDates: true });
+        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true });
+        prepararDatos(data);
       } catch (e) {
-          console.error(e);
-          document.getElementById('total').textContent = "Error cargando datos.";
+        document.getElementById('total').textContent = "Error cargando datos.";
       }
     }
   
     function prepararDatos(data) {
-      const hdrIndex = data.findIndex(row =>
-        Array.isArray(row) &&
-        row.some(v => v && v.toString().toUpperCase().includes('ETA'))
-      );
+      const idx = data.findIndex(r => Array.isArray(r) && r.some(v => v && String(v).match(/ETA/i)));
+      if (idx === -1) return;
+  
+      S.data.rows = data.slice(idx + 1);
+      S.data.header = data[idx].map(x => x ? String(x).toUpperCase() : '');
+      const h = S.data.header;
       
-      if (hdrIndex === -1) return;
-  
-      S.data.header = data[hdrIndex];
-      S.data.rows = data.slice(hdrIndex + 1);
-  
-      const upper = S.data.header.map(h => (h ? h.toString().toUpperCase() : ''));
-      S.idx.ETA    = upper.findIndex(s => s.includes('ETA'));
-      S.idx.ETD    = upper.findIndex(s => s.includes('ETD'));
-      S.idx.AERO   = upper.findIndex(s => s.includes('AEROL') || s.includes('AIRLINE'));
-      S.idx.ORIG   = upper.findIndex(s => s.includes('ORIG'));
-      S.idx.DEST   = upper.findIndex(s => s.includes('DEST'));
-      S.idx.ARRNUM = upper.findIndex(s => s.includes('ARR'));
-      S.idx.DEPNUM = upper.findIndex(s => s.includes('DEP'));
+      S.idx.ETA = h.findIndex(x => x.includes('ETA'));
+      S.idx.ETD = h.findIndex(x => x.includes('ETD'));
+      S.idx.AERO = h.findIndex(x => x.includes('AEROL') || x.includes('AIRLINE'));
+      S.idx.ARRNUM = h.findIndex(x => x.includes('ARR'));
+      S.idx.DEPNUM = h.findIndex(x => x.includes('DEP'));
+      S.idx.ORIG = h.findIndex(x => x.includes('ORIG'));
+      S.idx.DEST = h.findIndex(x => x.includes('DEST'));
   
       window.APP_MAIN.procesarYRender();
     }
   
     function computeAggregates() {
-      const llegadas = Array(24).fill(0);
-      const salidas = Array(24).fill(0);
-      const llegadas15 = Array(96).fill(0);
-      const salidas15 = Array(96).fill(0);
+      const llegadas = Array(24).fill(0), salidas = Array(24).fill(0);
+      const llegadas15 = Array(96).fill(0), salidas15 = Array(96).fill(0);
       const detalle = [];
   
-      S.data.rows.forEach(fila => {
-        if (!Array.isArray(fila)) return;
+      S.data.rows.forEach(row => {
+        if (!Array.isArray(row)) return;
   
-        // LLEGADAS
-        const minsETA = U.getMinutesFromCell(fila[S.idx.ETA]);
-        if (minsETA !== null) {
-          const h = Math.floor(minsETA / 60);
-          const q = Math.floor(minsETA / 15);
-          if (h >= 0 && h < 24) llegadas[h]++;
-          if (q >= 0 && q < 96) llegadas15[q]++;
-          
-          const minsETA_UTC = (minsETA + 360) % 1440;
+        // CORRECCIÓN: Recuperar lógica de filtro por selección (Click en gráfico)
+        // Si hay hora seleccionada, verificamos si coincide. Si no, mostramos todo.
+        let matchHour = true; 
+        let matchQuarter = true;
   
-          detalle.push({
-            aero: U.safeStr(fila[S.idx.AERO]),
-            vuelo: U.safeStr(fila[S.idx.ARRNUM]),
-            operacion: 'Llegada',
-            hora: U.formatMinutes(minsETA_UTC),
-            minutos: minsETA,
-            orig: U.safeStr(fila[S.idx.ORIG]),
-            dest: NOMBRE_AEROPUERTO_DISPLAY
-          });
+        const mArr = U.getMinutesFromCell(row[S.idx.ETA]);
+        const mDep = U.getMinutesFromCell(row[S.idx.ETD]);
+  
+        // Procesar Llegada
+        if (mArr !== null) {
+            const h = Math.floor(mArr/60);
+            const q = Math.floor(mArr/15);
+            // Sumar a totales (independiente de la selección para que el gráfico no desaparezca)
+            if(h<24) llegadas[h]++;
+            if(q<96) llegadas15[q]++;
+            
+            // Verificar Filtro Selección
+            if (S.selectedHour !== null && h !== S.selectedHour) matchHour = false;
+            if (S.selectedQuarter !== null && q !== S.selectedQuarter) matchQuarter = false;
+
+            if (matchHour && matchQuarter) {
+                detalle.push({
+                    aero: U.safeStr(row[S.idx.AERO]), vuelo: U.safeStr(row[S.idx.ARRNUM]),
+                    operacion: 'Llegada', hora: U.formatMinutes((mArr+360)%1440),
+                    orig: U.safeStr(row[S.idx.ORIG]), dest: 'MSLP'
+                });
+            }
         }
-  
-        // SALIDAS
-        const minsETD = U.getMinutesFromCell(fila[S.idx.ETD]);
-        if (minsETD !== null) {
-          const h = Math.floor(minsETD / 60);
-          const q = Math.floor(minsETD / 15);
-          if (h >= 0 && h < 24) salidas[h]++;
-          if (q >= 0 && q < 96) salidas15[q]++;
-          
-          const minsETD_UTC = (minsETD + 360) % 1440;
-  
-          detalle.push({
-            aero: U.safeStr(fila[S.idx.AERO]),
-            vuelo: U.safeStr(fila[S.idx.DEPNUM]),
-            operacion: 'Salida',
-            hora: U.formatMinutes(minsETD_UTC),
-            minutos: minsETD,
-            orig: NOMBRE_AEROPUERTO_DISPLAY,
-            dest: U.safeStr(fila[S.idx.DEST])
-          });
+        
+        // Reset match flags para Salida
+        matchHour = true; matchQuarter = true;
+
+        // Procesar Salida
+        if (mDep !== null) {
+            const h = Math.floor(mDep/60);
+            const q = Math.floor(mDep/15);
+            if(h<24) salidas[h]++;
+            if(q<96) salidas15[q]++;
+
+            if (S.selectedHour !== null && h !== S.selectedHour) matchHour = false;
+            if (S.selectedQuarter !== null && q !== S.selectedQuarter) matchQuarter = false;
+
+            if (matchHour && matchQuarter) {
+                detalle.push({
+                    aero: U.safeStr(row[S.idx.AERO]), vuelo: U.safeStr(row[S.idx.DEPNUM]),
+                    operacion: 'Salida', hora: U.formatMinutes((mDep+360)%1440),
+                    orig: 'MSLP', dest: U.safeStr(row[S.idx.DEST])
+                });
+            }
         }
       });
   
