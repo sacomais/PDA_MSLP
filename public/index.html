@@ -1,113 +1,41 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PDA MSLP - Dashboard</title>
-  <link rel="stylesheet" href="assets/styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <title>ATFM Dashboard - MSLP</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
-  <header class="top-bar">
-    <div class="header-logos">
-      <img src="assets/logo-cepa.png" alt="CEPA" onerror="this.style.display='none'"> 
-    </div>
-    
-    <div class="header-title">
-      <h1>Aeropuerto Internacional de El Salvador</br>
-      San Óscar Arnulfo Romero y Galdámez</h1>
-      <div class="current-date" id="fecha-actual">PDA DIARIO</div>
-    </div>
-
-    <div class="header-logos">
-      <img src="assets/logo-gobierno.png" alt="Gobierno" onerror="this.style.display='none'">
-    </div>
-  </header>
-
   <div class="dashboard-container">
     
-    <aside class="sidebar">
-      
-      <div class="card">
-        <h3>TAF MSLP</h3>
-        <pre id="taf-container">Cargando...</pre>
+    <header class="top-bar">
+      <div class="header-logos">
+        <img src="assets/cepa-logo.png" alt="CEPA Logo">
       </div>
-
-<div class="card">
-  <!--<h3>Resumen Operativo por Bloques</h3>-->
-  <table class="blocks-table">
-    <thead>
-      <tr>
-        <th>PERÍODO</th>
-        <th>DEMANDA</th>
-        <th>PRONÓSTICO</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="period-cell">
-          <strong>MAÑANA</strong><br>
-          <span class="small-time">06:00 - 12:00</span>
-        </td>
-        <td id="demanda-manana" class="status-cell">--</td>
-        <td id="pronostico-manana" class="status-cell editable" contenteditable="true">VMC</td>
-      </tr>
-      <tr>
-        <td class="period-cell">
-          <strong>TARDE</strong><br>
-          <span class="small-time">12:00 - 18:00</span>
-        </td>
-        <td id="demanda-tarde" class="status-cell">--</td>
-        <td id="pronostico-tarde" class="status-cell editable" contenteditable="true">VMC</td>
-      </tr>
-      <tr>
-        <td class="period-cell">
-          <strong>NOCHE</strong><br>
-          <span class="small-time">18:00 - 05:00</span>
-        </td>
-        <td id="demanda-noche" class="status-cell">--</td>
-        <td id="pronostico-noche" class="status-cell editable" contenteditable="true">VMC</td>
-      </tr>
-    </tbody>
-  </table>
-  <!--<p class="muted" style="font-size: 0.75rem; margin-top:5px;">
-    *Demanda basada en la hora pico del bloque.
-  </p>-->
-</div>
-
-      <div class="card">
-        <h3>INFRAESTRUCTURA AEROPORTUARIA - CNS</h3>
-        <div id="notams-container" class="notams-box">Cargando...</div>
+      <div class="header-title">
+        <h1>AEROPUERTO INTERNACIONAL DE EL SALVADOR<br>SAN ÓSCAR ARNULFO ROMERO Y GALDÁMEZ</h1>
+        <p id="fecha-header">Cargando fecha...</p>
       </div>
-      
-    </aside>
+      <div class="header-logos">
+        <img src="assets/gob-logo.png" alt="Gobierno Logo">
+      </div>
+    </header>
 
     <main class="main-content">
       
       <div class="controls">
-        <div>
-          <label>Aerolínea:</label>
-          <select id="filtroAerolinea"></select>
-        </div>
-        <div>
-          <label>Hora:</label>
-          <select id="filtroHora"></select>
-        </div>
-        <div>
-          <label>Operación:</label>
-          <select id="filtroTipo">
-            <option value="">Todas</option>
-            <option value="Llegada">Llegada</option>
-            <option value="Salida">Salida</option>
-          </select>
-        </div>
-        <button id="btnLimpiar">Restablecer</button>
-        <div id="total" style="font-weight:bold; color:var(--cepa-blue);">-- Ops</div>
+        <button id="btnLimpiar" title="Recargar datos">Restablecer</button>
+        <button id="btnPDF" style="background-color: #dc3545; color: white; border: none; padding: 0 20px; font-weight: bold; cursor: pointer; border-radius: 4px;">Exportar PDF</button>
+        <div id="total">Total de operaciones: 0</div>
       </div>
 
-      <div class="card">
+      <div class="card" id="card-chart-hourly">
         <h3 id="tituloGraficoHorario">Información Gráfica de Demanda Horaria</h3>
         <div class="chart-scroll-wrapper">
           <div class="chart-body-scroll chart-body-scroll-hourly">
@@ -116,7 +44,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="card-chart-15">
         <h3>Información Gráfica de Demanda 15 min</h3>
         <div class="chart-scroll-wrapper">
           <div class="chart-body-scroll chart-body-scroll-15">
@@ -125,40 +53,96 @@
         </div>
       </div>
 
-      <div id="detalleContainer" class="card" style="display:none;">
+      <div id="detalleContainer" class="card">
         <h3>Detalle de Operaciones Seleccionadas</h3>
-        <table id="tablaDetalle" class="blocks-table" style="width:100%; table-layout: auto;">
+        <table id="tablaDetalle" class="blocks-table" style="width:100%">
           <thead>
             <tr>
               <th>Aerolínea</th>
               <th>N° Vuelo</th>
               <th>Operación</th>
-              <th>Hora</th>
+              <th>Hora (UTC)</th>
               <th>Origen</th>
               <th>Destino</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody>
+            </tbody>
         </table>
       </div>
 
     </main>
+
+    <aside class="sidebar">
+      
+      <div class="card" id="card-sem">
+        <h3>Demanda y Pronóstico</h3>
+        <table class="blocks-table">
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Demanda</th>
+              <th>Pronóstico</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="row-manana">
+              <td>
+                <strong>MAÑANA</strong><br>
+                <span style="font-size:0.8rem">06:00 - 12:00</span>
+              </td>
+              <td class="demanda-cell">--</td>
+              <td class="pronostico-cell">--</td>
+            </tr>
+            <tr id="row-tarde">
+              <td>
+                <strong>TARDE</strong><br>
+                <span style="font-size:0.8rem">12:00 - 18:00</span>
+              </td>
+              <td class="demanda-cell">--</td>
+              <td class="pronostico-cell">--</td>
+            </tr>
+            <tr id="row-noche">
+              <td>
+                <strong>NOCHE</strong><br>
+                <span style="font-size:0.8rem">18:00 - 05:00</span>
+              </td>
+              <td class="demanda-cell">--</td>
+              <td class="pronostico-cell">--</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" id="card-taf">
+        <h3>TAF MSLP</h3>
+        <div id="taf-container" class="taf-box">Cargando TAF...</div>
+      </div>
+
+      <div class="card" id="card-notams">
+        <h3>INFRAESTRUCTURA AEROPORTUARIA - CNS</h3>
+        <div id="notams-list">Cargando NOTAMs...</div>
+      </div>
+
+    </aside>
+
   </div>
 
-  <script>
-    // Script simple para poner la fecha de hoy en el header
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-ES', options).toUpperCase();
-  </script>
-
   <script src="js/app.config.js"></script>
-  <script src="js/app.state.js"></script>
   <script src="js/app.utils.js"></script>
+  <script src="js/app.state.js"></script>
   <script src="js/app.data.js"></script>
-  <script src="js/app.ui.js"></script>
   <script src="js/app.charts.js"></script>
+  <script src="js/app.ui.js"></script>
   <script src="js/app.taf.js"></script>
-  <script src="js/app.notams.js"></script> <script src="js/main.js"></script>
+  <script src="js/app.notams.js"></script>
+  <script src="js/main.js"></script>
+
+  <script>
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const fechaTexto = new Date().toLocaleDateString('es-ES', options).toUpperCase();
+    document.getElementById('fecha-header').textContent = fechaTexto;
+  </script>
 
 </body>
 </html>
