@@ -2,12 +2,21 @@
     const S = window.APP_STATE;
   
     async function init() {
-      // 1. Vincular eventos
-      if (window.APP_UI.bindEventos) {
+      // 1. Vincular eventos (Botones)
+      if (window.APP_UI && window.APP_UI.bindEventos) {
         window.APP_UI.bindEventos();
       }
-      // 2. Cargar datos
+
+      // 2. Cargar Datos del Excel
       await window.APP_DATA.cargarDatos();
+
+      // 3. CORRECCIÓN: Cargar TAF y NOTAMs explícitamente
+      if (window.APP_TAF && window.APP_TAF.loadTAF) {
+          window.APP_TAF.loadTAF();
+      }
+      if (window.APP_NOTAMS && window.APP_NOTAMS.loadNotams) {
+          window.APP_NOTAMS.loadNotams();
+      }
     }
   
     function procesarYRender() {
@@ -21,90 +30,48 @@
       window.APP_CHARTS.buildQuarterChart(llegadas15, salidas15);
     }
   
-    // ==========================================
-    // FUNCIÓN GLOBAL PARA EXPORTAR PDF
-    // ==========================================
+    // Función global PDF
     window.exportarPDF = function() {
-      // Verificar si la librería está cargada
-      if (!window.html2pdf) {
-          alert("Error: Librería html2pdf no encontrada.");
-          return;
-      }
-
-      // 1. Crear contenedor temporal
+      if (!window.html2pdf) { alert("Librería html2pdf no encontrada."); return; }
       const tempDiv = document.createElement('div');
-      tempDiv.style.padding = '20px';
-      tempDiv.style.width = '1100px'; 
-      tempDiv.style.background = 'white';
-  
-      // 2. Título
+      tempDiv.style.padding = '20px'; tempDiv.style.width = '1100px'; tempDiv.style.background = 'white';
+      
       const titulo = document.createElement('h2');
       titulo.innerText = 'Reporte Operacional ATFM - ' + new Date().toLocaleDateString();
-      titulo.style.textAlign = 'center';
-      titulo.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.appendChild(titulo);
+      titulo.style.textAlign = 'center'; tempDiv.appendChild(titulo);
   
-      // 3. Función para clonar y convertir Canvas a Imagen
       const clonar = (id) => {
         const el = document.getElementById(id);
         if (el) {
           const clone = el.cloneNode(true);
-          clone.style.margin = '20px 0';
-          clone.style.pageBreakInside = 'avoid';
-          
-          // Buscar Canvas original y reemplazarlo por Imagen en el clon
-          const originalCanvas = el.querySelector('canvas');
-          if (originalCanvas) {
+          clone.style.margin = '20px 0'; clone.style.pageBreakInside = 'avoid';
+          const canvas = el.querySelector('canvas');
+          if (canvas) {
             const img = document.createElement('img');
-            img.src = originalCanvas.toDataURL('image/png', 1.0);
+            img.src = canvas.toDataURL('image/png', 1.0);
             img.style.width = '100%';
-            img.style.height = 'auto';
-            
-            // Reemplazar canvas por imagen
-            const cloneCanvas = clone.querySelector('canvas');
-            if (cloneCanvas && cloneCanvas.parentNode) {
-                cloneCanvas.parentNode.replaceChild(img, cloneCanvas);
-            }
-            
-            // Ajustar contenedores de scroll para imprimir completo
-            const scrollDiv = clone.querySelector('.chart-scroll-wrapper');
-            if(scrollDiv) {
-                scrollDiv.style.overflow = 'visible';
-                scrollDiv.style.width = 'auto';
-                scrollDiv.style.height = 'auto';
-            }
-            const bodyScroll = clone.querySelector('.chart-body-scroll');
-            if(bodyScroll) {
-                bodyScroll.style.width = '100%'; 
-                bodyScroll.style.minWidth = '0';
-                bodyScroll.style.overflow = 'visible';
-            }
+            const cClone = clone.querySelector('canvas');
+            if(cClone) cClone.parentNode.replaceChild(img, cClone);
+            const scroll = clone.querySelector('.chart-scroll-wrapper');
+            if(scroll) { scroll.style.overflow='visible'; scroll.style.width='auto'; }
+            const bodyS = clone.querySelector('.chart-body-scroll');
+            if(bodyS) { bodyS.style.width='100%'; bodyS.style.minWidth='0'; }
           }
           tempDiv.appendChild(clone);
         }
       };
+      
+      ['card-sem','card-taf','card-notams','card-chart-hourly','card-chart-15'].forEach(clonar);
   
-      // 4. Clonar secciones en orden
-      clonar('card-sem');          
-      clonar('card-taf');          
-      clonar('card-notams');       
-      clonar('card-chart-hourly'); 
-      clonar('card-chart-15');     
-  
-      // 5. Generar PDF
       const opt = {
-        margin: 10,
-        filename: `ATFM_Report_${new Date().toISOString().slice(0,10)}.pdf`,
+        margin: 10, filename: `ATFM_Report_${new Date().toISOString().slice(0,10)}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+        html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
       };
-      
       window.html2pdf().set(opt).from(tempDiv).save();
     };
   
     window.APP_MAIN = { init, procesarYRender };
-    
-    // Iniciar
     init();
 })();
