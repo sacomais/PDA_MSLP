@@ -66,12 +66,15 @@ header.top-bar {
 
 /* --- LAYOUT DEL DASHBOARD --- */
 .dashboard-container {
-  display: grid;
-  grid-template-columns: 350px 1fr; /* Barra lateral izq, contenido der */
-  gap: 20px;
-  padding: 20px;
-  max-width: 1600px;
-  margin: 0 auto;
+    display: grid;
+    grid-template-areas: 
+        "header header"
+        "main sidebar";
+    grid-template-columns: 1fr 300px; /* Sidebar de 300px */
+    gap: 20px;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 /* Paneles / Tarjetas */
@@ -294,23 +297,20 @@ canvas {
   /* 3. REORDENAMIENTO DE BLOQUES (ORDEN VISUAL) */
   /* Main Content (Filtros, Gráficos, Detalle) va PRIMERO */
   .main-content {
-    order: 1; 
-    width: 100%;
-    min-width: 850px;
-    padding-bottom: 20px;
-  }
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0; /* Evita que los gráficos rompan el grid */
+}
 
   /* Sidebar (TAF, Demanda, NOTAMs) va SEGUNDO */
   .sidebar {
-    order: 2; 
-    width: 100%;
-    min-width: 850px;
-    padding-bottom: 20px;
-    
-    /* Activamos Flex para reordenar las tarjetas internas */
+    grid-area: sidebar;
     display: flex;
     flex-direction: column;
-  }
+    gap: 20px;
+}
 
   /* REORDENAMIENTO INTERNO SIDEBAR */
   /* 1. Tabla Demanda/Pronóstico */
@@ -342,16 +342,15 @@ canvas {
   
   /* Header */
   .top-bar {
-    width: 100%;
-    min-width: 850px;
+    grid-area: header;
     display: flex;
-    flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
-    height: auto;
-    box-sizing: border-box;
-  }
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
   .header-logos img { height: 50px; }
   .header-title h1 { font-size: 1.2rem; }
 
