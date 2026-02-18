@@ -1,10 +1,9 @@
-// js/app.charts.js
 (function () {
     const C = window.APP_CONFIG;
     const S = window.APP_STATE;
     const U = window.APP_UTILS;
   
-    // Configuración común del Tooltip
+    // Tooltips
     const tooltipCommon = {
       mode: 'index',
       intersect: false,
@@ -12,7 +11,7 @@
       callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.formattedValue}` }
     };
   
-    // Plugins para dibujar etiquetas rojas de capacidad
+    // Etiquetas de Capacidad (Plugins)
     const capacidadLabelPluginHora = {
       id: 'capacidadLabelHora',
       afterDatasetsDraw(chart) {
@@ -41,7 +40,7 @@
       }
     };
   
-    // Formatea fecha YYMMDD
+    // Fecha YYMMDD
     function getYYMMDD(dateObj) {
       const y = String(dateObj.getFullYear()).slice(-2);
       const m = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -60,6 +59,9 @@
       tituloEl.textContent = `Información Gráfica de Demanda desde ${f1} 06:00 UTC./${f2} 05:59 UTC.`;
     }
   
+    // ----------------------
+    // GRÁFICO HORARIO
+    // ----------------------
     function buildHourlyChart(llegadas, salidas) {
       // Eje X: 00..23 local -> UTC+6
       const etiquetasUTC = Array.from({ length: 24 }, (_, hLocal) => {
@@ -105,8 +107,10 @@
       });
     }
   
+    // ----------------------
+    // GRÁFICO 15 MIN
+    // ----------------------
     function buildQuarterChart(llegadas15, salidas15) {
-      // Etiquetas UTC cada 15 min
       const etiquetas15UTC = Array.from({ length: 96 }, (_, i) => {
         const hLocal = Math.floor(i / 4);
         const m = (i % 4) * 15;
@@ -144,15 +148,18 @@
           scales: {
             x: { 
               stacked: true, 
-              // MEJORA: Grid inteligente que marca el inicio de cada hora
+              // === AQUÍ ESTÁ EL TRUCO DE LAS LÍNEAS DIVISORIAS ===
               grid: { 
                 display: true,
                 drawOnChartArea: true,
+                // Pinta una línea gris suave cada 4 barras (cada hora)
                 color: (context) => {
-                    // Si el índice es múltiplo de 4 (0, 4, 8...) es una hora en punto -> Pintar Gris
-                    if (context.tick.value % 4 === 0) return 'rgba(0,0,0,0.1)';
-                    return 'transparent';
-                }
+                    if (context.tick && context.tick.value % 4 === 0) {
+                        return 'rgba(0, 0, 0, 0.15)'; // Gris visible
+                    }
+                    return 'transparent'; // Oculto resto del tiempo
+                },
+                lineWidth: 1
               },
               ticks: { autoSkip: true, maxTicksLimit: 24, maxRotation: 0 } 
             },
