@@ -1,21 +1,22 @@
-// js/app.ui.js - VERSIÓN SEGURA
 (function () {
     const U = window.APP_UTILS;
     const S = window.APP_STATE;
   
     function bindEventos() {
+      // 1. Botón Restablecer
       const btnLimpiar = document.getElementById('btnLimpiar');
       if (btnLimpiar) {
         btnLimpiar.addEventListener('click', () => {
           S.selectedHour = null;
           S.selectedQuarter = null;
+          // Reseteamos filtros internos (aunque no haya inputs visuales)
           S.filters = { airline: '', hora: '', tipo: '' };
           window.APP_MAIN.procesarYRender();
         });
       }
       
+      // 2. Botón PDF
       const btnPDF = document.getElementById('btnPDF');
-      // Verificamos si existe la función exportar antes de asignar
       if (btnPDF && window.exportarPDF) {
         btnPDF.addEventListener('click', window.exportarPDF);
       }
@@ -49,19 +50,16 @@
     }
   
     function updateBlocksSummary(llegadas, salidas) {
+      // Definición exacta de IDs que están en el HTML
       const blocks = [
         { id: 'row-manana', start: 6, end: 11 },
         { id: 'row-tarde',  start: 12, end: 17 },
-        { id: 'row-noche',  start: 18, end: 28 } 
+        { id: 'row-noche',  start: 18, end: 28 } // 18 a 05
       ];
   
       blocks.forEach(block => {
-        // PROTECCIÓN: Si no encuentra la fila en el HTML, salta al siguiente sin romper nada
         const row = document.getElementById(block.id);
-        if (!row) {
-            console.warn(`Advertencia: No se encontró la fila con ID '${block.id}' en el HTML.`);
-            return; 
-        }
+        if (!row) return; // Si no encuentra la fila, no hace nada (evita errores)
 
         let count = 0;
         for (let i = 0; i < 24; i++) {
@@ -71,6 +69,7 @@
           } else {
              inRange = (i >= block.start && i <= block.end);
           }
+          
           if (inRange) {
             count += (llegadas[i] || 0) + (salidas[i] || 0);
           }
@@ -89,7 +88,7 @@
       });
     }
 
-    // Funciones vacías de compatibilidad
+    // Funciones vacías para evitar errores si Data las llama
     function poblarFiltroAerolinea() {}
     function poblarFiltroHora() {}
   
