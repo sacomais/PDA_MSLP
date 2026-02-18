@@ -1,0 +1,293 @@
+name: Update Data (NOTAMs Hourly / TAF Daily)
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Cada hora
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup folders
+        run: mkdir -p public/data
+
+      # ------------------------------------------------------------------
+      # 1. NOTAMS: ROBUST SEARCH & SCRAPE
+      # ------------------------------------------------------------------
+      - name: Descargar NOTAMs (Robust Fix)
+        run: |
+          pip install selenium webdriver-manager pandas openpyxl
+
+          cat <<EOF > scrape_notams.py
+          import os
+          import time
+          import json
+          import glob
+          import pandas as pd
+          import re
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+          from selenium.webdriver.support.ui import WebDriverWait
+          from selenium.webdriver.support import expected_conditions as EC
+          from selenium.webdriver.common.keys import Keys
+
+          # Configurar directorios
+          download_dir = os.path.abspath("public/data")
+          
+          # Configurar Chrome
+          options = Options()
+          options.add_argument("--headless")
+          options.add_argument("--window-size=1920,1080")
+          options.add_argument("--no-sandbox")
+          options.add_argument("--disable-dev-shm-usage")
+          options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+          
+          prefs = {
+              "download.default_directory": download_dir,
+              "download.prompt_for_download": False,
+              "directory_upgrade": True
+          }
+          options.add_experimental_option("prefs", prefs)
+
+          driver = webdriver.Chrome(options=options)
+          notams_list = []
+
+          try:
+              print("1. Accediendo a FAA Search...")
+              driver.get("https://notams.aim.faa.gov/notamSearch/")
+              wait = WebDriverWait(driver, 30) # Wait largo
+
+              # --- PASO A: DISCLAIMER ---
+              print("2. Gestionando Disclaimer...")
+              try:
+                  xpath_agree = "//*[contains(text(), \"read and understood\")]"
+                  # Esperamos presencia primero, luego clickeabilidad
+                  wait.until(EC.presence_of_element_located((By.XPATH, xpath_agree)))
+                  agree_btn = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_agree)))
+                  driver.execute_script("arguments[0].click();", agree_btn)
+                  print("   ✅ Disclaimer aceptado.")
+              except:
+                  print("   ⚠️ Disclaimer no apareció (o ya fue aceptado).")
+
+              # PAUSA LARGA: Dejar que Angular termine de "pintar" la interfaz
+              print("   ⏳ Esperando carga completa de la App (20s)...")
+              time.sleep(20)
+
+              # --- PASO B: BÚSQUEDA ---
+              print("3. Realizando búsqueda...")
+              
+              # Estrategia Multicapa para encontrar el Input
+              search_input = None
+              selectors = [
+                  (By.ID, "searchDesignators"),           # ID Oficial
+                  (By.NAME, "designators"),               # Name Oficial
+                  (By.CSS_SELECTOR, "input[type='text']"),# Genérico
+                  (By.XPATH, "//input[@placeholder='Location']") # Placeholder común
+              ]
+              
+              for by, val in selectors:
+                  try:
+                      print(f"   Probando selector: {val}")
+                      search_input = driver.find_element(by, val)
+                      if search_input.is_displayed():
+                          print("   ✅ Input encontrado.")
+                          break
+                  except:
+                      continue
+              
+              if not search_input:
+                  raise Exception("No se encontró la caja de búsqueda tras 4 intentos.")
+
+              # Limpiar y Escribir (Híbrido JS + Teclado)
+              driver.execute_script("arguments[0].value = '';", search_input)
+              search_input.send_keys("MSLP")
+              time.sleep(1)
+              
+              # Presionar el botón Search explícitamente
+              try:
+                  search_btn = driver.find_element(By.ID, "searchButton") # ID común
+                  driver.execute_script("arguments[0].click();", search_btn)
+              except:
+                  # Fallback: Buscar botón por texto
+                  btns = driver.find_elements(By.TAG_NAME, "button")
+                  for b in btns:
+                      if "Search" in b.text:
+                          driver.execute_script("arguments[0].click();", b)
+                          break
+              
+              print("   ✅ Búsqueda ejecutada.")
+              print("   ⏳ Esperando resultados (15s)...")
+              time.sleep(15)
+
+              # --- PASO C: INTENTO 1 - EXCEL ---
+              print("4. Estrategia A: Intentar descargar Excel...")
+              excel_success = False
+              try:
+                  # Buscamos iconos de Excel o textos de exportar
+                  # Intentamos buscar el icono fa-file-excel-o
+                  export_btns = driver.find_elements(By.CSS_SELECTOR, ".fa-file-excel-o")
+                  if export_btns:
+                      driver.execute_script("arguments[0].click();", export_btns[0])
+                      print("   ✅ Botón Excel clickeado.")
+                      time.sleep(15) # Esperar descarga
+                      
+                      files = glob.glob(os.path.join(download_dir, "*.xlsx")) + glob.glob(os.path.join(download_dir, "*.csv"))
+                      if files:
+                          latest_file = max(files, key=os.path.getctime)
+                          print(f"   📂 Archivo descargado: {latest_file}")
+                          
+                          if latest_file.endswith(".csv"):
+                              df = pd.read_csv(latest_file)
+                          else:
+                              df = pd.read_excel(latest_file)
+                          
+                          for idx, row in df.iterrows():
+                              row_str = str(row.values)
+                              match = re.search(r'([A-Z]\d{4}/\d{2})', row_str)
+                              if match:
+                                  nid = match.group(1)
+                                  msg = max([str(x) for x in row.values if isinstance(x, str) or not pd.isna(x)], key=len, default="")
+                                  notams_list.append({
+                                      "notamNumber": nid,
+                                      "icaoMessage": f"{nid} {msg}",
+                                      "startDate": "2025-01-01T00:00:00Z"
+                                  })
+                          excel_success = True
+                  else:
+                      print("   ⚠️ Botón Excel no encontrado.")
+              except Exception as e:
+                  print(f"   ⚠️ Falló descarga Excel: {e}")
+
+              # --- PASO D: INTENTO 2 - LECTURA VISUAL (FALLBACK) ---
+              if not excel_success:
+                  print("5. Estrategia B: Lectura visual de tabla (Fallback)...")
+                  
+                  # Capturamos TODAS las filas de tablas visibles
+                  rows = driver.find_elements(By.TAG_NAME, "tr")
+                  print(f"   Filas encontradas: {len(rows)}")
+                  
+                  for row in rows:
+                      text = row.text.strip()
+                      if not text: continue
+                      
+                      # Buscamos patrón NOTAM Axxxx/xx
+                      match = re.search(r'([A-Z]\d{4}/\d{2})', text)
+                      if match:
+                          nid = match.group(1)
+                          # Limpieza: Convertir saltos de línea en espacios
+                          clean_msg = text.replace('\n', ' ').strip()
+                          
+                          # Evitar duplicados
+                          if not any(n['notamNumber'] == nid for n in notams_list):
+                              notams_list.append({
+                                  "notamNumber": nid,
+                                  "icaoMessage": clean_msg,
+                                  "startDate": "2025-01-01T00:00:00Z"
+                              })
+
+              # --- RESULTADO FINAL ---
+              print(f"✅ FINAL: Se obtuvieron {len(notams_list)} NOTAMs.")
+              
+              output = { "notamList": notams_list }
+              with open('public/data/notams.json', 'w') as f:
+                  json.dump(output, f, indent=2)
+
+          except Exception as e:
+              print(f"❌ Error Crítico: {e}")
+              try:
+                  print("--- HTML DUMP ---")
+                  print(driver.page_source[:2000])
+              except: pass
+              
+              with open('public/data/notams.json', 'w') as f:
+                  json.dump({"notamList": []}, f)
+              exit(1)
+          finally:
+              driver.quit()
+          EOF
+
+          python scrape_notams.py
+          
+          echo "Vista previa:"
+          head -n 20 public/data/notams.json
+
+      # ------------------------------------------------------------------
+      # 2. TAF (API) y EXCEL (LOCAL MENSUAL)
+      # ------------------------------------------------------------------
+      - name: Actualizar TAF y Seleccionar Excel del Día
+        run: |
+          echo "Iniciando proceso de actualización..."
+
+          # --- A. GESTIÓN DEL EXCEL (LOCAL) ---
+          # 1. Configuramos la zona horaria para saber qué día es en El Salvador
+          export TZ="America/El_Salvador"
+          HOY=$(date +'%Y-%m-%d')
+          
+          echo "📅 Fecha actual en El Salvador: $HOY"
+          
+          ARCHIVO_ORIGEN="public/mensual/${HOY}.xlsx"
+          ARCHIVO_DESTINO="public/operaciones.xlsx"
+
+          if [ -f "$ARCHIVO_ORIGEN" ]; then
+              echo "✅ Se encontró el archivo de hoy: $ARCHIVO_ORIGEN"
+              # Sobrescribimos el archivo activo con el de hoy
+              cp "$ARCHIVO_ORIGEN" "$ARCHIVO_DESTINO"
+              echo "📂 Datos actualizados correctamente en $ARCHIVO_DESTINO"
+          else
+              echo "⚠️ NO se encontró archivo para la fecha $HOY en la carpeta 'mensual'."
+              echo "🛑 Se mantienen los datos del día anterior (no se realizaron cambios en el Excel)."
+          fi
+
+          # --- B. DESCARGA TAF (AviationWeather API) ---
+          cat <<EOF > fetch_taf.py
+          import requests
+          import sys
+          import time
+          
+          # Timestamp para romper caché
+          timestamp = int(time.time())
+          url = f"https://aviationweather.gov/api/data/taf?ids=MSLP&format=raw&date={timestamp}"
+          
+          print(f"Consultando API AWC: {url}")
+
+          try:
+              r = requests.get(url, timeout=20)
+              if r.status_code == 200:
+                  content = r.text.strip()
+                  if "MSLP" in content:
+                      print(f"✅ TAF Recibido y guardado.")
+                      with open("public/data/taf-today.txt", "w") as f:
+                          f.write(content)
+                  else:
+                      print("⚠️ API respondió vacía o sin MSLP.")
+              else:
+                  print(f"❌ Error API: {r.status_code}")
+          except Exception as e:
+              print(f"❌ Error Script TAF: {e}")
+          EOF
+          
+          python fetch_taf.py
+
+      # ------------------------------------------------------------------
+      # 3. GUARDAR CAMBIOS
+      # ------------------------------------------------------------------
+      - name: Configurar Git y Guardar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/taf-today.txt public/operaciones.xlsx public/data/notams.json || true
+          
+          if git diff --cached --quiet; then
+            echo "No hay cambios."
+          else
+            git commit -m "Auto-update data $(date -u '+%H:%M UTC')"
+            git push origin main
+          fi
