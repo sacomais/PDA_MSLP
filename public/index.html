@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDA MSLP - Dashboard</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <header class="top-bar">
+    <div class="header-logos">
+      <img src="assets/logo-cepa.png" alt="CEPA" onerror="this.style.display='none'"> 
+    </div>
+    
+    <div class="header-title">
+      <h1>Aeropuerto Internacional de El Salvador</br>
+      San Óscar Arnulfo Romero y Galdámez</h1>
+      <div class="current-date" id="fecha-actual">PDA DIARIO</div>
+    </div>
+
+    <div class="header-logos">
+      <img src="assets/logo-gobierno.png" alt="Gobierno" onerror="this.style.display='none'">
+    </div>
+  </header>
+
+  <div class="dashboard-container">
+    
+    <aside class="sidebar">
+      
+      <div class="card">
+        <h3>TAF MSLP</h3>
+        <pre id="taf-container">Cargando...</pre>
+      </div>
+
+<div class="card">
+  <!--<h3>Resumen Operativo por Bloques</h3>-->
+  <table class="blocks-table">
+    <thead>
+      <tr>
+        <th>PERÍODO</th>
+        <th>DEMANDA</th>
+        <th>PRONÓSTICO</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="period-cell">
+          <strong>MAÑANA</strong><br>
+          <span class="small-time">06:00 - 12:00</span>
+        </td>
+        <td id="demanda-manana" class="status-cell">--</td>
+        <td id="pronostico-manana" class="status-cell editable" contenteditable="true">VMC</td>
+      </tr>
+      <tr>
+        <td class="period-cell">
+          <strong>TARDE</strong><br>
+          <span class="small-time">12:00 - 18:00</span>
+        </td>
+        <td id="demanda-tarde" class="status-cell">--</td>
+        <td id="pronostico-tarde" class="status-cell editable" contenteditable="true">VMC</td>
+      </tr>
+      <tr>
+        <td class="period-cell">
+          <strong>NOCHE</strong><br>
+          <span class="small-time">18:00 - 05:00</span>
+        </td>
+        <td id="demanda-noche" class="status-cell">--</td>
+        <td id="pronostico-noche" class="status-cell editable" contenteditable="true">VMC</td>
+      </tr>
+    </tbody>
+  </table>
+  <!--<p class="muted" style="font-size: 0.75rem; margin-top:5px;">
+    *Demanda basada en la hora pico del bloque.
+  </p>-->
+</div>
+
+      <div class="card">
+        <h3>INFRAESTRUCTURA AEROPORTUARIA - CNS</h3>
+        <div id="notams-container" class="notams-box">Cargando...</div>
+      </div>
+      
+    </aside>
+
+    <main class="main-content">
+      
+      <div class="controls">
+        <div>
+          <label>Aerolínea:</label>
+          <select id="filtroAerolinea"></select>
+        </div>
+        <div>
+          <label>Hora:</label>
+          <select id="filtroHora"></select>
+        </div>
+        <div>
+          <label>Operación:</label>
+          <select id="filtroTipo">
+            <option value="">Todas</option>
+            <option value="Llegada">Llegada</option>
+            <option value="Salida">Salida</option>
+          </select>
+        </div>
+        <button id="btnLimpiar">Restablecer</button>
+        <div id="total" style="font-weight:bold; color:var(--cepa-blue);">-- Ops</div>
+      </div>
+
+      <div class="card">
+        <h3 id="tituloGraficoHorario">Información Gráfica de Demanda Horaria</h3>
+        <div class="chart-scroll-wrapper">
+          <div class="chart-body-scroll chart-body-scroll-hourly">
+            <canvas id="grafico"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Información Gráfica de Demanda 15 min</h3>
+        <div class="chart-scroll-wrapper">
+          <div class="chart-body-scroll chart-body-scroll-15">
+            <canvas id="grafico15"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div id="detalleContainer" class="card" style="display:none;">
+        <h3>Detalle de Operaciones Seleccionadas</h3>
+        <table id="tablaDetalle" class="blocks-table" style="width:100%; table-layout: auto;">
+          <thead>
+            <tr>
+              <th>Aerolínea</th>
+              <th>N° Vuelo</th>
+              <th>Operación</th>
+              <th>Hora</th>
+              <th>Origen</th>
+              <th>Destino</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    // Script simple para poner la fecha de hoy en el header
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-ES', options).toUpperCase();
+  </script>
+
+  <script src="js/app.config.js"></script>
+  <script src="js/app.state.js"></script>
+  <script src="js/app.utils.js"></script>
+  <script src="js/app.data.js"></script>
+  <script src="js/app.ui.js"></script>
+  <script src="js/app.charts.js"></script>
+  <script src="js/app.taf.js"></script>
+  <script src="js/app.notams.js"></script> <script src="js/main.js"></script>
+
+</body>
+</html>
