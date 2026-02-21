@@ -1,6 +1,11 @@
 {
   "notamList": [
     {
+      "notamNumber": "A0307/26",
+      "icaoMessage": "MSLP A0307/26 International 02/21/2026 0027 04/22/2026 1200 TWR PERSONNEL ON JOB TRAINING UNDER SUPERVISION",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
       "notamNumber": "A0227/26",
       "icaoMessage": "MSLP A0227/26 International 02/13/2026 0455 04/17/2026 1100 RWY 07/25 CLSD",
       "startDate": "2025-01-01T00:00:00Z"
@@ -11,8 +16,18 @@
       "startDate": "2025-01-01T00:00:00Z"
     },
     {
-      "notamNumber": "A2880/25",
-      "icaoMessage": "MSLP A2880/25 International 12/22/2025 1200 02/22/2026 1200 TWR PERSONNEL ON JOB TRAINING UNDER SUPERVISION",
+      "notamNumber": "A0304/26",
+      "icaoMessage": "MSLP A0304/26 International 03/02/2026 1600 03/04/2026 2200 PSR U/S F) SFC G) 35000FT AMSL",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A0306/26",
+      "icaoMessage": "MSLP A0306/26 International 02/25/2026 1500 02/26/2026 2000 TAR U/S",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A0305/26",
+      "icaoMessage": "MSLP A0305/26 International 02/24/2026 1600 02/24/2026 2000 SSR U/S",
       "startDate": "2025-01-01T00:00:00Z"
     }
   ]
