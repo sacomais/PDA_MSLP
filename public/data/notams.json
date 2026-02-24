@@ -24,11 +24,6 @@
       "notamNumber": "A0306/26",
       "icaoMessage": "MSLP A0306/26 International 02/25/2026 1500 02/26/2026 2000 TAR U/S",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A0305/26",
-      "icaoMessage": "MSLP A0305/26 International 02/24/2026 1600 02/24/2026 2000 SSR U/S",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
