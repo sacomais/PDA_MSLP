@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDA MSLP - Dashboard</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+  <header class="top-bar">
+    <div class="header-logos">
+      <img src="assets/logo-cepa.png" alt="CEPA" onerror="this.style.display='none'"> 
+    </div>
+    
+    <div class="header-title">
+      <h1>Aeropuerto Internacional de El Salvador</br>
+      San Óscar Arnulfo Romero y Galdámez</h1>
+      <div class="current-date" id="fecha-actual">PDA DIARIO</div>
+    </div>
+
+    <div class="header-logos">
+      <img src="assets/logo-gobierno.png" alt="Gobierno" onerror="this.style.display='none'">
+    </div>
+  </header>
+
+  <div class="dashboard-container">
+    
+    <div class="controls" style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; gap: 10px;">
+        <button id="btnLimpiar">Restablecer Vista</button>
+        <button id="btnExportar">Exportar a PDF</button>
+      </div>
+      <div id="total" style="color: #002F6C; font-size: 1.1rem; font-weight: bold; margin: 0;">Total de operaciones: --</div>
+    </div>
+
+    <div class="card">
+      <h3 id="tituloGraficoHorario">Información Gráfica de Demanda Horaria</h3>
+      <div class="chart-scroll-wrapper" style="height: 450px; overflow-y: hidden; overflow-x: auto;">
+        <div class="chart-body-scroll chart-body-scroll-hourly" style="position: relative; height: 450px; min-width: 1200px;">
+          <canvas id="grafico"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Información Gráfica de Demanda 15 min</h3>
+      <div class="chart-scroll-wrapper">
+        <div class="chart-body-scroll chart-body-scroll-15">
+          <canvas id="grafico15"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <style>
+        /* REGLA ESTRICTA: Fuerza 0.7rem a TODOS los elementos de ambas tablas (th, td, negritas, indicadores) */
+        #contenedor-tabla-demanda *, #contenedor-tabla-colores * {
+            font-size: 0.7rem !important;
+        }
+      </style>
+      
+      <h3>Datos Estimados Para el Día</h3>
+      <div style="display: flex; justify-content: space-between; align-items: stretch; gap: 20px; flex-wrap: wrap; margin-top: 10px;">
+        
+        <div id="contenedor-tabla-demanda" style="flex: 0 1 auto;">
+          <table class="blocks-table" style="height: 100%; white-space: nowrap;">
+            <thead>
+              <tr>
+                <th></th>
+                <th style="padding: 8px 20px;">MAÑANA</th>
+                <th style="padding: 8px 20px;">TARDE</th>
+                <th style="padding: 8px 20px;">NOCHE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="period-cell"><strong>DEMANDA</strong></td>
+                <td id="demanda-manana" class="status-cell">--</td>
+                <td id="demanda-tarde" class="status-cell">--</td>
+                <td id="demanda-noche" class="status-cell">--</td>
+              </tr>
+              <tr>
+                <td class="period-cell"><strong>PRONÓSTICO</strong></td>
+                <td id="pronostico-manana" class="status-cell editable" contenteditable="true">VMC</td>
+                <td id="pronostico-tarde" class="status-cell editable" contenteditable="true">VMC</td>
+                <td id="pronostico-noche" class="status-cell editable" contenteditable="true">VMC</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="contenedor-tabla-colores" style="flex: 0 1 auto;">
+          <table class="blocks-table" style="height: 100%; white-space: nowrap;">
+            <thead>
+              <tr>
+                <th></th>
+                <th style="font-weight: bold; text-align: center; padding: 8px 15px;">DEMANDA</th>
+                <th style="font-weight: bold; text-align: center; padding: 8px 15px;">METEOROLOGÍA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="status-cell met-vmc">VERDE</td>
+                <td class="period-cell" style="text-align: left; padding-left: 10px;"><strong>BAJA:</strong> por debajo del 50%</td>
+                <td class="period-cell" style="font-weight: bold;">VMC</td>
+              </tr>
+              <tr>
+                <td class="status-cell met-imc">AMARILLO</td>
+                <td class="period-cell" style="text-align: left; padding-left: 10px;"><strong>MEDIA:</strong> entre 51% a 80%</td>
+                <td class="period-cell" style="font-weight: bold;">IMC</td>
+              </tr>
+              <tr>
+                <td class="status-cell met-minimos">ROJO</td>
+                <td class="period-cell" style="text-align: left; padding-left: 10px;"><strong>ALTA:</strong> mayor al 81%</td>
+                <td class="period-cell" style="font-weight: bold;">BAJO MÍNIMOS</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="detalleContainer" class="card" style="display:none;">
+      <h3>Detalle de Operaciones Seleccionadas</h3>
+      <table id="tablaDetalle" class="blocks-table" style="width:100%; table-layout: auto;">
+        <thead>
+          <tr>
+            <th>Aerolínea</th>
+            <th>N° Vuelo</th>
+            <th>Operación</th>
+            <th>Hora</th>
+            <th>Origen</th>
+            <th>Destino</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Información Meteorológica</h3>
+      <pre id="taf-container">Cargando...</pre>
+    </div>
+
+    <div class="card">
+      <h3>Infraestructura Aeroportuaria - CNS</h3>
+      <div id="notams-container" class="notams-box">Cargando...</div>
+    </div>
+
+  </div>
+
+  <script>
+    // Script simple para poner la fecha de hoy en el header
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-ES', options).toUpperCase();
+  </script>
+
+  <script src="js/app.config.js"></script>
+  <script src="js/app.state.js"></script>
+  <script src="js/app.utils.js"></script>
+  <script src="js/app.data.js"></script>
+  <script src="js/app.ui.js"></script>
+  <script src="js/app.charts.js"></script>
+  <script src="js/app.taf.js"></script>
+  <script src="js/app.notams.js"></script> <script src="js/main.js"></script>
+
+</body>
+</html>
