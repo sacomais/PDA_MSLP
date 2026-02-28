@@ -19,6 +19,11 @@
       "notamNumber": "A0304/26",
       "icaoMessage": "MSLP A0304/26 International 03/02/2026 1600 03/04/2026 2200 PSR U/S F) SFC G) 35000FT AMSL",
       "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A0351/26",
+      "icaoMessage": "MSLP A0351/26 International 03/03/2026 0300 03/03/2026 1030 TWY A BTN TWY C AND TWY D CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
