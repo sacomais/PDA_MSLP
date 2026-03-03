@@ -11,6 +11,11 @@
       "startDate": "2025-01-01T00:00:00Z"
     },
     {
+      "notamNumber": "A0370/26",
+      "icaoMessage": "MSLP A0370/26 International 03/03/2026 1600 04/01/2026 0200 TWY F IN FRONT OF ACFT STAND NR 03 INTL CARGO APN CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
       "notamNumber": "A0087/26",
       "icaoMessage": "MSLP A0087/26 International 01/20/2026 0012 03/20/2026 0400 APP AND TWR OPR WITH MANAGAIR CONTINGENCY SYSTEM. THE START AND END TIMES WILL BE NOTIFIED TO THE ADJ ACC VIA VOICE CHANNELS",
       "startDate": "2025-01-01T00:00:00Z"
