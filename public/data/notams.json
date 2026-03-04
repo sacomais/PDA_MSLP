@@ -1,6 +1,16 @@
 {
   "notamList": [
     {
+      "notamNumber": "V0058/26",
+      "icaoMessage": "MSLP V0058/26 Military 03/04/2026 1716 07/09/2026 2359 [US DOD PROCEDURAL NOTAM] INSTRUMENT APPROACH PROCEDURE NOT AUTHORIZED ILS/DME Y RWY 07 AS PUBLISHED IN DOD FLIPS",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "V0059/26",
+      "icaoMessage": "MSLP V0059/26 Military 03/04/2026 1738 07/09/2026 2359 [US DOD PROCEDURAL NOTAM] INSTRUMENT APPROACH PROCEDURE NOT AUTHORIZED VOR/DME Z RWY 07 AS PUBLISHED IN DOD FLIPS",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
       "notamNumber": "A0307/26",
       "icaoMessage": "MSLP A0307/26 International 02/21/2026 0027 04/22/2026 1200 TWR PERSONNEL ON JOB TRAINING UNDER SUPERVISION",
       "startDate": "2025-01-01T00:00:00Z"
@@ -23,6 +33,11 @@
     {
       "notamNumber": "A0087/26",
       "icaoMessage": "MSLP A0087/26 International 01/20/2026 0012 03/20/2026 0400 APP AND TWR OPR WITH MANAGAIR CONTINGENCY SYSTEM. THE START AND END TIMES WILL BE NOTIFIED TO THE ADJ ACC VIA VOICE CHANNELS",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A0383/26",
+      "icaoMessage": "MSLP A0383/26 International 03/05/2026 1600 03/05/2026 1900 TWY A BTN TWY C AND TWY D CLSD",
       "startDate": "2025-01-01T00:00:00Z"
     },
     {
