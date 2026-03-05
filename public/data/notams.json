@@ -39,11 +39,6 @@
       "notamNumber": "A0383/26",
       "icaoMessage": "MSLP A0383/26 International 03/05/2026 1600 03/05/2026 1900 TWY A BTN TWY C AND TWY D CLSD",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A0373/26",
-      "icaoMessage": "MSLP A0373/26 International 03/05/2026 1700 03/05/2026 1730 SSR LIMITED TO MODE A AND C",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
