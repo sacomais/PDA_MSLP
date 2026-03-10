@@ -39,11 +39,6 @@
       "notamNumber": "A0424/26",
       "icaoMessage": "MSLP A0424/26 International 03/10/2026 2100 03/11/2026 0700 UNMANNED AIRCRAFT WILL TAKE PLACE F) SFC G) 10000FT AMSL",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A0421/26",
-      "icaoMessage": "MSLP A0421/26 International 03/10/2026 0300 03/10/2026 1030 TWY A BTN HLDG POINT RWY 25 AND WEST ACCESS OF MILITARY APN CLSD",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
