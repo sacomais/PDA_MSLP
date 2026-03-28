@@ -34,11 +34,6 @@
       "notamNumber": "A0596/26",
       "icaoMessage": "MSLP A0596/26 International 03/28/2026 1500 03/28/2026 1900 UNMANNED AIRCRAFT WILL TAKE PLACE F) 15000FT AMSL G) 16000FT AMSL",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A0518/26",
-      "icaoMessage": "MSLP A0518/26 International 03/19/2026 0300 03/28/2026 1030 TWY A BTN TWY B AND WEST ACCESS TO MILITARY APN CLSD",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
