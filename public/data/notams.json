@@ -29,11 +29,6 @@
       "notamNumber": "A0371/26",
       "icaoMessage": "MSLP A0371/26 International 03/03/2026 1600 04/01/2026 0200 ACFT STAND NR 03 INTL CARGO APN CLSD",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A0606/26",
-      "icaoMessage": "MSLP A0606/26 International 03/29/2026 0307 03/29/2026 1030 TWY A BTN TWY B AND WEST ACCESS TO MILITARY APN CLSD",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
