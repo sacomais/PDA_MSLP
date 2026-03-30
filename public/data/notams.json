@@ -1,3 +1,34 @@
 {
-  "notamList": []
+  "notamList": [
+    {
+      "notamNumber": "V0058/26",
+      "icaoMessage": "MSLP V0058/26 Military 03/04/2026 1716 07/09/2026 2359 [US DOD PROCEDURAL NOTAM] INSTRUMENT APPROACH PROCEDURE NOT AUTHORIZED ILS/DME Y RWY 07 AS PUBLISHED IN DOD FLIPS",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "V0059/26",
+      "icaoMessage": "MSLP V0059/26 Military 03/04/2026 1738 07/09/2026 2359 [US DOD PROCEDURAL NOTAM] INSTRUMENT APPROACH PROCEDURE NOT AUTHORIZED VOR/DME Z RWY 07 AS PUBLISHED IN DOD FLIPS",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A0307/26",
+      "icaoMessage": "MSLP A0307/26 International 02/21/2026 0027 04/22/2026 1200 TWR PERSONNEL ON JOB TRAINING UNDER SUPERVISION",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A0409/26",
+      "icaoMessage": "MSLP A0409/26 International 03/06/2026 0341 04/17/2026 1100 RWY 07/25 CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A0370/26",
+      "icaoMessage": "MSLP A0370/26 International 03/03/2026 1600 04/01/2026 0200 TWY F IN FRONT OF ACFT STAND NR 03 INTL CARGO APN CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A0371/26",
+      "icaoMessage": "MSLP A0371/26 International 03/03/2026 1600 04/01/2026 0200 ACFT STAND NR 03 INTL CARGO APN CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
+    }
+  ]
 }
