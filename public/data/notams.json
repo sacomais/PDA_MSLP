@@ -29,6 +29,11 @@
       "notamNumber": "A0409/26",
       "icaoMessage": "MSLP A0409/26 International 03/06/2026 0341 04/17/2026 1100 RWY 07/25 CLSD",
       "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A0621/26",
+      "icaoMessage": "MSLP A0621/26 International 04/01/2026 0345 04/11/2026 1100 TWY A BTN TWY B AND TWY C CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
