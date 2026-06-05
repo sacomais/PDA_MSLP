@@ -136,9 +136,9 @@
     MIN: { text: 'BAJO MINIMOS', class: 'met-minimos' }
   };
 
-  /**
-   * Función principal que se llama al cargar el TAF.
-   * Analiza el texto y actualiza las celdas, pintando GRIS los bloques pasados.
+/**
+   * Controlador Meteorológico TAF - Time-Sliced Parser
+   * Excluye PROB30/40 y aísla condiciones por bloque operativo UTC.
    */
   function actualizarPronosticoDesdeTAF() {
     const tafElement = document.getElementById('taf-container');
@@ -147,65 +147,170 @@
     const rawTaf = tafElement.textContent.trim().toUpperCase();
     if (!rawTaf || rawTaf.includes('CARGANDO') || rawTaf.includes('NO DISPONIBLE')) return;
 
-    // 1. Calcular la severidad del TAF actual (Verde, Naranja, Rojo)
-    const resultadoTAF = calcularSeveridad(rawTaf);
-    
-    // Guardamos estado global para usarlo en el semáforo de demanda
-    if (resultadoTAF.text === 'VMC') ESTADO_CLIMA_ACTUAL = 'VMC';
-    else if (resultadoTAF.text === 'IMC') ESTADO_CLIMA_ACTUAL = 'IMC';
-    else ESTADO_CLIMA_ACTUAL = 'MIN';
-
-    // 2. Obtener hora actual en UTC (Zulu)
+    // --- 1. CONFIGURACIÓN DE RELOJ ABSOLUTO (UTC) ---
     const ahora = new Date();
-    const horaUTC = ahora.getUTCHours();
+    const currYear = ahora.getUTCFullYear();
+    const currMonth = ahora.getUTCMonth();
+    const currDay = ahora.getUTCDate();
+    const currHour = ahora.getUTCHours();
 
-    // 3. Determinar qué periodo operativo está activo usando rangos UTC
-    // Mañana Local (06:00-11:59) -> UTC 12:00 a 17:59
-    // Tarde Local  (12:00-17:59) -> UTC 18:00 a 23:59
-    // Noche Local  (18:00-05:59) -> UTC 00:00 a 11:59
+    // El día operativo en MSLP arranca a las 12Z (06:00 Local).
+    // Si la hora actual es menor a 12Z, seguimos operando en el día de ayer.
+    const opDay = currHour < 12 ? currDay - 1 : currDay;
     
-    let periodoActual = '';
-    if (horaUTC >= 12 && horaUTC < 18) {
-        periodoActual = 'manana';
-    } else if (horaUTC >= 18 && horaUTC <= 23) {
-        periodoActual = 'tarde';
-    } else {
-        periodoActual = 'noche';
+    // Fecha base: Inicio del día operativo actual (12:00Z)
+    const opDateObj = new Date(Date.UTC(currYear, currMonth, opDay, 12, 0, 0));
+    const opStartMs = opDateObj.getTime();
+    const msPerHour = 3600000;
+
+    // Función auxiliar para convertir Día/Hora TAF a milisegundos absolutos
+    function getAbsTime(d, h) {
+        let m = currMonth;
+        // Corrección de cruce de mes (ej. Hoy es 1, el TAF fue del 31)
+        if (currDay < 5 && d > 25) m--;
+        else if (currDay > 25 && d < 5) m++;
+        return Date.UTC(currYear, m, d, h, 0, 0);
     }
 
-    // 4. Configurar la vigencia de los bloques
-    // Si estamos en la mañana, todos los bloques están vigentes.
-    // Si estamos en la tarde, la mañana ya caducó (gris).
-    // Si estamos en la noche, mañana y tarde ya caducaron (gris).
+    // --- 2. FRAGMENTACIÓN DEL TAF ---
+    // Unimos PROB con TEMPO para no romperlos y poder descartarlos juntos
+    let t = rawTaf.replace(/PROB(\d{2})\sTEMPO/g, "PROB$1_TEMPO");
+    
+    // Insertamos separadores (|) justo antes de cada marcador de cambio
+    t = t.replace(/FM/g, "|FM").replace(/TEMPO/g, "|TEMPO").replace(/BECMG/g, "|BECMG").replace(/PROB/g, "|PROB");
+    
+    let frags = t.split("|").map(s => s.trim()).filter(s => s);
+    let chunks = [];
+
+    frags.forEach((frag, index) => {
+        // REGLA: Ignoramos completamente cualquier fragmento de probabilidad
+        if (frag.startsWith("PROB")) return; 
+
+        let type = "BASE";
+        let startT = 0;
+        let endT = Infinity; // Los FM y BECMG duran hasta el final del TAF
+
+        if (index === 0) {
+            // Fragmento Base (Condición inicial del TAF)
+            let m = frag.match(/(\d{2})(\d{2})\/(\d{2})(\d{2})/);
+            if (m) {
+                startT = getAbsTime(parseInt(m[1], 10), parseInt(m[2], 10));
+            } else {
+                startT = opStartMs; 
+            }
+        } else if (frag.startsWith("FM")) {
+            // Reemplazo definitivo
+            let m = frag.match(/FM(\d{2})(\d{2})\d{2}/);
+            if (m) {
+                type = "FM";
+                startT = getAbsTime(parseInt(m[1], 10), parseInt(m[2], 10));
+            }
+        } else if (frag.startsWith("TEMPO")) {
+            // Superposición temporal
+            let m = frag.match(/TEMPO\s(\d{2})(\d{2})\/(\d{2})(\d{2})/);
+            if (m) {
+                type = "TEMPO";
+                startT = getAbsTime(parseInt(m[1], 10), parseInt(m[2], 10));
+                endT = getAbsTime(parseInt(m[3], 10), parseInt(m[4], 10));
+            }
+        } else if (frag.startsWith("BECMG")) {
+            // Evolución definitiva
+            let m = frag.match(/BECMG\s(\d{2})(\d{2})\/(\d{2})(\d{2})/);
+            if (m) {
+                type = "BECMG";
+                startT = getAbsTime(parseInt(m[1], 10), parseInt(m[2], 10));
+            }
+        }
+
+        chunks.push({ type, startT, endT, text: frag });
+    });
+
+    // --- 3. RECONSTRUCCIÓN HORA POR HORA ---
+    // Esta función cruza el tiempo del dashboard con los tiempos del TAF
+    function getCombinedTextForBlock(startOffsetHrs, endOffsetHrs) {
+        let blockText = "";
+        const blockStartMs = opStartMs + (startOffsetHrs * msPerHour);
+        const blockEndMs = opStartMs + (endOffsetHrs * msPerHour);
+
+        // Simulamos el paso del tiempo hora por hora dentro del bloque
+        for (let time = blockStartMs; time <= blockEndMs; time += msPerHour) {
+            
+            // 1. ¿Cuál es la condición BASE/FM/BECMG activa en esta hora exacta?
+            let activeBase = "";
+            for (let i = 0; i < chunks.length; i++) {
+                let c = chunks[i];
+                if ((c.type === 'BASE' || c.type === 'FM' || c.type === 'BECMG') && c.startT <= time) {
+                    activeBase = c.text; // Sobreescribe con el último activo
+                }
+            }
+
+            // 2. ¿Hay algún TEMPO activo en esta hora exacta?
+            let activeTempos = "";
+            for (let i = 0; i < chunks.length; i++) {
+                let c = chunks[i];
+                if (c.type === 'TEMPO' && time >= c.startT && time < c.endT) {
+                    activeTempos += " " + c.text; // Suma al temporal
+                }
+            }
+
+            // Unimos el texto resultante para esta hora en el bloque
+            blockText += " " + activeBase + " " + activeTempos + " | ";
+        }
+        return blockText;
+    }
+
+    // Calculamos el clima específico de cada bloque
+    // MAÑANA: 12Z a 17Z (offsets 0 a 5)
+    const txtManana = getCombinedTextForBlock(0, 5);
+    // TARDE: 18Z a 23Z (offsets 6 a 11)
+    const txtTarde = getCombinedTextForBlock(6, 11);
+    // NOCHE: 00Z a 11Z (offsets 12 a 23)
+    const txtNoche = getCombinedTextForBlock(12, 23);
+
+    // Mandamos el texto reconstruido al motor Regex que ya tenías
+    const estManana = calcularSeveridad(txtManana);
+    const estTarde = calcularSeveridad(txtTarde);
+    const estNoche = calcularSeveridad(txtNoche);
+
+    // Actualizamos el estado general basado EXCLUSIVAMENTE en la hora UTC actual
+    let currentOffset = Math.floor((ahora.getTime() - opStartMs) / msPerHour);
+    if (currentOffset < 0 || currentOffset > 23) currentOffset = 0;
+    const currentText = getCombinedTextForBlock(currentOffset, currentOffset);
+    const resultActual = calcularSeveridad(currentText);
+    ESTADO_CLIMA_ACTUAL = resultActual.text === 'BAJO MINIMOS' ? 'MIN' : resultActual.text;
+
+    // --- 4. ACTUALIZACIÓN DE LA UI ---
+    let periodoActual = '';
+    if (currHour >= 12 && currHour < 18) periodoActual = 'manana';
+    else if (currHour >= 18 && currHour <= 23) periodoActual = 'tarde';
+    else periodoActual = 'noche';
+
     const bloques = [
-        { id: 'pronostico-manana', vigente: (periodoActual === 'manana') },
-        { id: 'pronostico-tarde',  vigente: (periodoActual === 'manana' || periodoActual === 'tarde') },
-        { id: 'pronostico-noche',  vigente: true } // La noche siempre está vigente dentro del día operativo
+        { id: 'pronostico-manana', estado: estManana, vigente: (periodoActual === 'manana') },
+        { id: 'pronostico-tarde',  estado: estTarde,  vigente: (periodoActual === 'manana' || periodoActual === 'tarde') },
+        { id: 'pronostico-noche',  estado: estNoche,  vigente: true }
     ];
 
     bloques.forEach(bloque => {
       const celda = document.getElementById(bloque.id);
       if (celda) {
-        celda.className = 'status-cell'; // Reseteamos las clases previas
+        celda.className = 'status-cell'; 
         celda.removeAttribute('contenteditable');
 
         if (!bloque.vigente) {
-            // Bloque Finalizado -> GRIS
             celda.classList.add('met-finalizado');
             celda.textContent = '---'; 
         } else {
-            // Bloque Vigente o Futuro -> COLOR DEL TAF
-            celda.classList.add(resultadoTAF.class);
-            celda.textContent = resultadoTAF.text;
+            celda.classList.add(bloque.estado.class);
+            celda.textContent = bloque.estado.text;
         }
       }
     });
 
-    // Recalcular semáforo de demanda
     if (window.APP_MAIN && window.APP_MAIN.procesarYRender) {
         window.APP_MAIN.procesarYRender();
     }
-  } // Fin de la función actualizarPronosticoDesdeTAF
+  }
 
   /**
    * Motor de reglas meteorológicas (CORREGIDO)
