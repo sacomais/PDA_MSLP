@@ -155,33 +155,44 @@
     else if (resultadoTAF.text === 'IMC') ESTADO_CLIMA_ACTUAL = 'IMC';
     else ESTADO_CLIMA_ACTUAL = 'MIN';
 
-    // 2. Obtener hora actual local (0-23)
+    // 2. Obtener hora actual en UTC (Zulu)
     const ahora = new Date();
-    const horaActual = ahora.getHours();
+    const horaUTC = ahora.getUTCHours();
 
-    // 3. Definir límites de fin de cada bloque
-    // Mañana termina a las 12:00
-    // Tarde termina a las 18:00
-    // Noche termina a las 05:00 del día siguiente (siempre vigente hasta fin del día operativo)
+    // 3. Determinar qué periodo operativo está activo usando rangos UTC
+    // Mañana Local (06:00-11:59) -> UTC 12:00 a 17:59
+    // Tarde Local  (12:00-17:59) -> UTC 18:00 a 23:59
+    // Noche Local  (18:00-05:59) -> UTC 00:00 a 11:59
     
+    let periodoActual = '';
+    if (horaUTC >= 12 && horaUTC < 18) {
+        periodoActual = 'manana';
+    } else if (horaUTC >= 18 && horaUTC <= 23) {
+        periodoActual = 'tarde';
+    } else {
+        periodoActual = 'noche';
+    }
+
+    // 4. Configurar la vigencia de los bloques
+    // Si estamos en la mañana, todos los bloques están vigentes.
+    // Si estamos en la tarde, la mañana ya caducó (gris).
+    // Si estamos en la noche, mañana y tarde ya caducaron (gris).
     const bloques = [
-        { id: 'pronostico-manana', fin: 12 },
-        { id: 'pronostico-tarde',  fin: 18 },
-        { id: 'pronostico-noche',  fin: 24 } // Asumimos vigencia hasta medianoche/madrugada
+        { id: 'pronostico-manana', vigente: (periodoActual === 'manana') },
+        { id: 'pronostico-tarde',  vigente: (periodoActual === 'manana' || periodoActual === 'tarde') },
+        { id: 'pronostico-noche',  vigente: true } // La noche siempre está vigente dentro del día operativo
     ];
 
     bloques.forEach(bloque => {
       const celda = document.getElementById(bloque.id);
       if (celda) {
-        celda.className = 'status-cell'; // Limpiar clases previas
+        celda.className = 'status-cell'; // Reseteamos las clases previas
         celda.removeAttribute('contenteditable');
 
-        // LÓGICA DE TIEMPO:
-        // Si la hora actual es mayor o igual a la hora de fin del bloque, el bloque ya pasó.
-        if (horaActual >= bloque.fin) {
+        if (!bloque.vigente) {
             // Bloque Finalizado -> GRIS
             celda.classList.add('met-finalizado');
-            celda.textContent = '---'; // O "FINALIZADO"
+            celda.textContent = '---'; 
         } else {
             // Bloque Vigente o Futuro -> COLOR DEL TAF
             celda.classList.add(resultadoTAF.class);
@@ -194,7 +205,7 @@
     if (window.APP_MAIN && window.APP_MAIN.procesarYRender) {
         window.APP_MAIN.procesarYRender();
     }
-  }
+  } // Fin de la función actualizarPronosticoDesdeTAF
 
   /**
    * Motor de reglas meteorológicas (CORREGIDO)
