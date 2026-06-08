@@ -16,8 +16,13 @@
       "startDate": "2025-01-01T00:00:00Z"
     },
     {
-      "notamNumber": "A1107/26",
-      "icaoMessage": "MSLP A1107/26 International 06/06/2026 2200 06/08/2026 1600 UNMANNED AIRCRAFT WILL TAKE PLACE F)15000FT AMSL G)16000FT AMSL",
+      "notamNumber": "A1128/26",
+      "icaoMessage": "MSLP A1128/26 International 06/08/2026 1500 06/17/2026 0559 TWY F IN FRONT OF ACFT STAND NR 03 INTL CARGO APN CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A1129/26",
+      "icaoMessage": "MSLP A1129/26 International 06/08/2026 1500 06/17/2026 0559 ACFT STAND NR 03 INTL CARGO APN CLSD",
       "startDate": "2025-01-01T00:00:00Z"
     }
   ]
