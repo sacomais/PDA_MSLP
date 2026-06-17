@@ -29,11 +29,6 @@
       "notamNumber": "A0763/26",
       "icaoMessage": "MSLP A0763/26 International 04/22/2026 0013 06/22/2026 1200 TWR PERSONNEL ON JOB TRAINING UNDER SUPERVISION",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A1171/26",
-      "icaoMessage": "MSLP A1171/26 International 06/15/2026 2200 06/17/2026 1600 UNMANNED AIRCRAFT WILL TAKE PLACE F)15000FT AMSL G)16000FT AMSL",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
