@@ -1,6 +1,16 @@
 {
   "notamList": [
     {
+      "notamNumber": "A1212/26",
+      "icaoMessage": "MSLP A1212/26 International 06/19/2026 1630 07/19/2026 0559 ACFT STANDS NR1 AND NR2 INTL CARGO APN CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A1213/26",
+      "icaoMessage": "MSLP A1213/26 International 06/19/2026 1630 07/19/2026 0559 TWY F IN FRONT OF ACFT STANDS NR1 AND NR2 INTL CARGO APN CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
       "notamNumber": "V0058/26",
       "icaoMessage": "MSLP V0058/26 Military 03/04/2026 1716 07/09/2026 2359 [US DOD PROCEDURAL NOTAM] INSTRUMENT APPROACH PROCEDURE NOT AUTHORIZED ILS/DME Y RWY 07 AS PUBLISHED IN DOD FLIPS",
       "startDate": "2025-01-01T00:00:00Z"
@@ -16,18 +26,18 @@
       "startDate": "2025-01-01T00:00:00Z"
     },
     {
-      "notamNumber": "A1200/26",
-      "icaoMessage": "MSLP A1200/26 International 06/17/2026 0239 06/24/2026 0559 TWY F IN FRONT OF ACFT STAND NR 03 INTL CARGO APN CLSD",
-      "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A1201/26",
-      "icaoMessage": "MSLP A1201/26 International 06/17/2026 0242 06/24/2026 0559 ACFT STAND NR 03 INTL CARGO APN CLSD",
+      "notamNumber": "A1215/26",
+      "icaoMessage": "MSLP A1215/26 International 06/26/2026 1500 06/27/2026 0100 UNMANNED AIRCRAFT WILL TAKE PLACE F)9000FT AMSL G)10000FT AMSL",
       "startDate": "2025-01-01T00:00:00Z"
     },
     {
       "notamNumber": "A0763/26",
       "icaoMessage": "MSLP A0763/26 International 04/22/2026 0013 06/22/2026 1200 TWR PERSONNEL ON JOB TRAINING UNDER SUPERVISION",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A1214/26",
+      "icaoMessage": "MSLP A1214/26 International 06/20/2026 2200 06/21/2026 1600 UNMANNED AIRCRAFT WILL TAKE PLACE F)15000FT AMSL G)16000FT AMSL",
       "startDate": "2025-01-01T00:00:00Z"
     }
   ]
