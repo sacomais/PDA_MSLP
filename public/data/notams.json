@@ -29,11 +29,6 @@
       "notamNumber": "A1286/26",
       "icaoMessage": "MSLP A1286/26 International 06/27/2026 2100 06/28/2026 1500 UNMANNED AIRCRAFT WILL TAKE PLACE F)9000FT AMSL G)10000FT AMSL",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A1285/26",
-      "icaoMessage": "MSLP A1285/26 International 06/26/2026 2100 06/27/2026 1500 UNMANNED AIRCRAFT WILL TAKE PLACE F)9000FT AMSL G)10000FT AMSL",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
