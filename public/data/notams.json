@@ -19,11 +19,6 @@
       "notamNumber": "A1213/26",
       "icaoMessage": "MSLP A1213/26 International 06/19/2026 1630 07/19/2026 0559 TWY F IN FRONT OF ACFT STANDS NR1 AND NR2 INTL CARGO APN CLSD)",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A1424/26",
-      "icaoMessage": "MSLP A1424/26 International 07/14/2026 1600 07/16/2026 1100 UNMANNED AIRCRAFT WILL TAKE PLACE F)15000FT AMSL G)16000FT AMSL",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
