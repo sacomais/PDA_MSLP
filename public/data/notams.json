@@ -21,6 +21,16 @@
       "startDate": "2025-01-01T00:00:00Z"
     },
     {
+      "notamNumber": "A1485/26",
+      "icaoMessage": "MSLP A1485/26 International 07/23/2026 1500 07/23/2026 1830 VOR/DME CAT 117.1MHZ CH118X SUBJ INTRP DUE TO FLTCK REQ ATC INSTRUCTIONS",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A1484/26",
+      "icaoMessage": "MSLP A1484/26 International 07/21/2026 1500 07/22/2026 2300 ILS CAT I RWY 25 FREQ 109.9MHZ CH36X SUBJ INTRP DUE TO FLTCK REQ ATC INSTRUCTIONS",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
       "notamNumber": "A1463/26",
       "icaoMessage": "MSLP A1463/26 International 07/22/2026 1400 07/22/2026 2200 SSR OJO DE AGUA U/S",
       "startDate": "2025-01-01T00:00:00Z"
