@@ -24,11 +24,6 @@
       "notamNumber": "A1870/26",
       "icaoMessage": "MSLP A1870/26 International 09/07/2026 1500 09/28/2026 1800 TWY D BTN TWY A AND TWY F CLSD",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A1872/26",
-      "icaoMessage": "MSLP A1872/26 International 09/07/2026 2100 09/09/2026 1530 UNMANNED AIRCRAFT WILL TAKE PLACE F)9000FT AMSL G)10000FT AMSL",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
