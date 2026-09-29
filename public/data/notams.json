@@ -14,6 +14,11 @@
       "notamNumber": "A2008/26",
       "icaoMessage": "MSLP A2008/26 International 09/28/2026 1600 10/19/2026 1800 ACFT STAND NR 05 INTL PAX APN CLSD",
       "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A2026/26",
+      "icaoMessage": "MSLP A2026/26 International 09/29/2026 1805 10/19/2026 1800 TWY F IN FRONT OF ACFT STAND NR 05 INTL PAX APN CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
