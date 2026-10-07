@@ -19,11 +19,6 @@
       "notamNumber": "A2026/26",
       "icaoMessage": "MSLP A2026/26 International 09/29/2026 1805 10/19/2026 1800 TWY F IN FRONT OF ACFT STAND NR 05 INTL PAX APN CLSD",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A2108/26",
-      "icaoMessage": "MSLP A2108/26 International 10/07/2026 1500 10/07/2026 2359 ILS CAT I ICUS RWY 07 FREQ 110.3 MHZ CH40X SUBJ INTRP DUE TO FLTCK. REQ ATC INSTRUCTIONS",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
