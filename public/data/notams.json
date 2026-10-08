@@ -19,11 +19,6 @@
       "notamNumber": "A2026/26",
       "icaoMessage": "MSLP A2026/26 International 09/29/2026 1805 10/19/2026 1800 TWY F IN FRONT OF ACFT STAND NR 05 INTL PAX APN CLSD",
       "startDate": "2025-01-01T00:00:00Z"
-    },
-    {
-      "notamNumber": "A2111/26",
-      "icaoMessage": "MSLP A2111/26 International 10/08/2026 1200 10/08/2026 2359 PAPI RWY 07/25 SUBJ INTRP DUE TO FLTCK REQ ATC INSTRUCTIONS",
-      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
