@@ -19,6 +19,11 @@
       "notamNumber": "A2239/26",
       "icaoMessage": "MSLP A2239/26 International 10/24/2026 0100 11/13/2026 1800 ACFT STAND NR 04 INTL PAX APN CLSD",
       "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A2378/26",
+      "icaoMessage": "MSLP A2378/26 International 11/10/2026 1400 11/10/2026 2100 TWY F BTN TWY E AND ACFT STAND NR 03 INTL CARGO APN CLSD",
+      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
