@@ -11,6 +11,11 @@
       "startDate": "2025-01-01T00:00:00Z"
     },
     {
+      "notamNumber": "A2477/26",
+      "icaoMessage": "MSLP A2477/26 International 11/23/2026 1200 02/23/2027 1200 APP PERSONNEL ON JOB TRAINING UNDER SUPERVISION",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
       "notamNumber": "A2182/26",
       "icaoMessage": "MSLP A2182/26 International 10/19/2026 0330 01/18/2027 2200 UNMANNED AIRCRAFT WILL TAKE PLACE F)16000FT AMSL G)19000FT AMSL",
       "startDate": "2025-01-01T00:00:00Z"
