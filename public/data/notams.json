@@ -24,6 +24,21 @@
       "notamNumber": "A2426/26",
       "icaoMessage": "MSLP A2426/26 International 11/20/2026 0500 11/29/2026 1030 RWY 07/25 CLSD",
       "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A2506/26",
+      "icaoMessage": "MSLP A2506/26 International 11/26/2026 0500 11/29/2026 0900 AFTN SERVICE AT EL SALVADOR INTL AP SUBJ INTRP DUE TO MAINT",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A2507/26",
+      "icaoMessage": "MSLP A2507/26 International 11/26/2026 0500 11/29/2026 0900 GND-GND COM CH USED FOR ATS BTN EL SALVADOR APP, ADJACENT APP AND CENAMER ACC SUBJ INTRP DUE TO MAINT",
+      "startDate": "2025-01-01T00:00:00Z"
+    },
+    {
+      "notamNumber": "A2508/26",
+      "icaoMessage": "MSLP A2508/26 International 11/28/2026 1500 11/28/2026 2200 PSR U/S",
+      "startDate": "2025-01-01T00:00:00Z"
     }
   ]
 }
